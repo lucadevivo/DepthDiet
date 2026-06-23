@@ -203,8 +203,9 @@ final class LidarCaptureViewController: UIViewController, ARSessionDelegate {
     if didFinish { return }
     didFinish = true
     sceneView.session.pause()
-    dismiss(animated: true) { [weak self] in
-      self?.onResult?(result)
+    let callback = onResult
+    dismiss(animated: true) {
+      callback?(result)
     }
   }
 
@@ -258,10 +259,10 @@ enum VolumeEstimator {
     let imgRes = frame.camera.imageResolution
     let sx = Float(width) / Float(imgRes.width)
     let sy = Float(height) / Float(imgRes.height)
-    let fx = intr[0][0] * sx
-    let fy = intr[1][1] * sy
-    let cx = intr[2][0] * sx
-    let cy = intr[2][1] * sy
+    let fx = intr.columns.0.x * sx
+    let fy = intr.columns.1.y * sy
+    let cx = intr.columns.2.x * sx
+    let cy = intr.columns.2.y * sy
     let camT = frame.camera.transform
 
     // ARWorldTracking è allineato a gravità → piano orizzontale ⇒ normale = +Y mondo.
