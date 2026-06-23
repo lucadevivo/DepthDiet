@@ -6,13 +6,11 @@ import { colors } from "../../src/theme/colors";
 import { todayISO, shiftISO, formatDayLabel } from "../../src/lib/date";
 import { useDiaryQuery, useDeleteDiaryEntry } from "../../src/hooks/useDiary";
 import { useProfileQuery } from "../../src/hooks/useProfile";
-import { MEAL_LABELS, type MealName } from "../../src/types/nutrition";
+import { useMealsQuery } from "../../src/hooks/useMeals";
 import { ProgressBar } from "../../src/components/ProgressBar";
 import { MacroProgressColumn } from "../../src/components/MacroProgressColumn";
 import { MealCard } from "../../src/components/MealCard";
 import { Icon } from "../../src/components/Icon";
-
-const MEAL_ORDER: MealName[] = ["breakfast", "lunch", "dinner", "snack"];
 
 // Fallback targets if the profile hasn't been computed yet.
 const FALLBACK = { calories: 2600, protein_g: 190, carbs_g: 270, fat_g: 75 };
@@ -25,8 +23,13 @@ export default function DiaryScreen() {
   const diary = useDiaryQuery(date);
   const del = useDeleteDiaryEntry(date);
   const profile = useProfileQuery();
+  const meals = useMealsQuery();
 
   const entries = diary.data?.entries ?? [];
+  const mealList = meals.data ?? [];
+  // Voci il cui pasto non esiste più (meal_id null o pasto eliminato) → "Other".
+  const mealIds = new Set(mealList.map((m) => m.id));
+  const orphanEntries = entries.filter((e) => e.meal_id == null || !mealIds.has(e.meal_id));
   const totals = diary.data?.totals ?? { kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0 };
   const p = profile.data;
   const targets = {
@@ -97,18 +100,29 @@ export default function DiaryScreen() {
           </View>
         </View>
 
-        {diary.isLoading ? (
+        {diary.isLoading || meals.isLoading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: 16 }} />
         ) : (
-          MEAL_ORDER.map((meal) => (
-            <MealCard
-              key={meal}
-              title={MEAL_LABELS[meal]}
-              entries={entries.filter((e) => e.meal === meal)}
-              onAdd={() => router.push(`/diary/add?meal=${meal}&date=${date}`)}
-              onDelete={(id) => del.mutate(id)}
-            />
-          ))
+          <>
+            {mealList.map((meal) => (
+              <MealCard
+                key={meal.id}
+                title={meal.name}
+                entries={entries.filter((e) => e.meal_id === meal.id)}
+                onAdd={() => router.push(`/diary/add?meal_id=${meal.id}&date=${date}`)}
+                onDelete={(id) => del.mutate(id)}
+              />
+            ))}
+            {orphanEntries.length > 0 ? (
+              <MealCard
+                title="Other"
+                entries={orphanEntries}
+                onAdd={() => {}}
+                onDelete={(id) => del.mutate(id)}
+                showAdd={false}
+              />
+            ) : null}
+          </>
         )}
       </ScrollView>
     </View>

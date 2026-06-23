@@ -3,16 +3,15 @@ import {
   addDiaryEntry,
   deleteDiaryEntry,
   getDiaryByDate,
-  type Meal,
   type NewDiaryEntry,
 } from "../repositories/diary.js";
 import { getCustomFoodById } from "../repositories/customFoods.js";
 import { getRecipeById } from "../repositories/recipes.js";
+import { getMealById } from "../repositories/meals.js";
 import { scaleFood, type Macros } from "../services/nutrition.js";
 
 export const diaryRouter = Router();
 
-const MEALS: Meal[] = ["breakfast", "lunch", "dinner", "snack"];
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 const round = (n: number, d = 1) => {
@@ -32,10 +31,10 @@ diaryRouter.get("/", (req, res) => {
 
 /**
  * POST /api/diary — aggiunge una voce. Tre modalità:
- *   { date, meal, type:'custom_food', food_id, grams }
- *   { date, meal, type:'recipe', recipe_id, multiplier? }
- *   { date, meal, type:'manual', description, kcal, protein_g, carbs_g, fat_g, grams? }
- *   { date, meal, type:'scan',   ...come manual (source 'scan', Scanner IA) }
+ *   { date, meal_id, type:'custom_food', food_id, grams }
+ *   { date, meal_id, type:'recipe', recipe_id, multiplier? }
+ *   { date, meal_id, type:'manual', description, kcal, protein_g, carbs_g, fat_g, grams? }
+ *   { date, meal_id, type:'scan',   ...come manual (source 'scan', Scanner IA) }
  * I macro vengono calcolati lato server e salvati come snapshot.
  */
 diaryRouter.post("/", (req, res) => {
@@ -46,27 +45,27 @@ diaryRouter.post("/", (req, res) => {
     res.status(400).json({ error: "bad_request", detail: "date=YYYY-MM-DD richiesto" });
     return;
   }
-  if (!MEALS.includes(b.meal as Meal)) {
-    res.status(400).json({ error: "bad_request", detail: "meal non valido" });
+  const mealId = typeof b.meal_id === "number" ? b.meal_id : NaN;
+  if (!Number.isInteger(mealId) || !getMealById(mealId)) {
+    res.status(400).json({ error: "bad_request", detail: "meal_id non valido" });
     return;
   }
-  const meal = b.meal as Meal;
 
   let entry: NewDiaryEntry | { error: string };
 
   switch (b.type) {
     case "custom_food":
-      entry = buildFromFood(date, meal, b);
+      entry = buildFromFood(date, mealId, b);
       break;
     case "recipe":
-      entry = buildFromRecipe(date, meal, b);
+      entry = buildFromRecipe(date, mealId, b);
       break;
     case "manual":
-      entry = buildManual(date, meal, b);
+      entry = buildManual(date, mealId, b);
       break;
     case "scan":
       // Voce dallo Scanner IA (Fase 4a): stessi campi del manuale, source distinta.
-      entry = buildManual(date, meal, b);
+      entry = buildManual(date, mealId, b);
       if (!("error" in entry)) entry.source = "scan";
       break;
     default:
@@ -86,7 +85,7 @@ diaryRouter.delete("/:id", (req, res) => {
 
 // --- builder per tipo ---
 
-function buildFromFood(date: string, meal: Meal, b: Record<string, unknown>): NewDiaryEntry | { error: string } {
+function buildFromFood(date: string, mealId: number, b: Record<string, unknown>): NewDiaryEntry | { error: string } {
   const foodId = typeof b.food_id === "number" ? b.food_id : NaN;
   const grams = typeof b.grams === "number" ? b.grams : NaN;
   if (!Number.isFinite(foodId) || !Number.isFinite(grams) || grams <= 0) {
@@ -96,7 +95,7 @@ function buildFromFood(date: string, meal: Meal, b: Record<string, unknown>): Ne
   if (!food) return { error: "food_id inesistente" };
   return {
     entry_date: date,
-    meal,
+    meal_id: mealId,
     source: "custom_food",
     custom_food_id: food.id,
     recipe_id: null,
@@ -106,7 +105,7 @@ function buildFromFood(date: string, meal: Meal, b: Record<string, unknown>): Ne
   };
 }
 
-function buildFromRecipe(date: string, meal: Meal, b: Record<string, unknown>): NewDiaryEntry | { error: string } {
+function buildFromRecipe(date: string, mealId: number, b: Record<string, unknown>): NewDiaryEntry | { error: string } {
   const recipeId = typeof b.recipe_id === "number" ? b.recipe_id : NaN;
   if (!Number.isFinite(recipeId)) return { error: "recipe_id richiesto" };
   const recipe = getRecipeById(recipeId);
@@ -121,7 +120,7 @@ function buildFromRecipe(date: string, meal: Meal, b: Record<string, unknown>): 
   };
   return {
     entry_date: date,
-    meal,
+    meal_id: mealId,
     source: "recipe",
     custom_food_id: null,
     recipe_id: recipe.id,
@@ -131,7 +130,7 @@ function buildFromRecipe(date: string, meal: Meal, b: Record<string, unknown>): 
   };
 }
 
-function buildManual(date: string, meal: Meal, b: Record<string, unknown>): NewDiaryEntry | { error: string } {
+function buildManual(date: string, mealId: number, b: Record<string, unknown>): NewDiaryEntry | { error: string } {
   const description = typeof b.description === "string" && b.description.trim() !== "" ? b.description.trim() : null;
   if (!description) return { error: "description richiesta" };
   const n = (v: unknown): number | null =>
@@ -146,7 +145,7 @@ function buildManual(date: string, meal: Meal, b: Record<string, unknown>): NewD
   const grams = b.grams === undefined ? null : n(b.grams);
   return {
     entry_date: date,
-    meal,
+    meal_id: mealId,
     source: "manual",
     custom_food_id: null,
     recipe_id: null,

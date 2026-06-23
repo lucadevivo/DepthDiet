@@ -1,13 +1,13 @@
 import { getDb } from "../db/connection.js";
 import { sumMacros, type Macros } from "../services/nutrition.js";
 
-export type Meal = "breakfast" | "lunch" | "dinner" | "snack";
 export type DiarySource = "manual" | "custom_food" | "recipe" | "scan" | "off";
 
 export interface DiaryEntry {
   id: number;
   entry_date: string;
-  meal: Meal;
+  /** Pasto di appartenenza; null se il pasto è stato eliminato (gruppo "Other"). */
+  meal_id: number | null;
   source: DiarySource;
   custom_food_id: number | null;
   recipe_id: number | null;
@@ -28,7 +28,7 @@ export interface DiaryDay {
 
 export interface NewDiaryEntry {
   entry_date: string;
-  meal: Meal;
+  meal_id: number | null;
   source: DiarySource;
   custom_food_id: number | null;
   recipe_id: number | null;
@@ -41,7 +41,7 @@ export interface NewDiaryEntry {
 export function getDiaryByDate(date: string): DiaryDay {
   const entries = getDb()
     .prepare(
-      `SELECT id, entry_date, meal, source, custom_food_id, recipe_id, description, grams,
+      `SELECT id, entry_date, meal_id, source, custom_food_id, recipe_id, description, grams,
               kcal, protein_g, carbs_g, fat_g, created_at
          FROM diary_entries
         WHERE entry_date = ?
@@ -64,13 +64,13 @@ export function addDiaryEntry(e: NewDiaryEntry): DiaryEntry {
   const info = getDb()
     .prepare(
       `INSERT INTO diary_entries
-         (entry_date, meal, source, custom_food_id, recipe_id, description, grams,
+         (entry_date, meal_id, source, custom_food_id, recipe_id, description, grams,
           kcal, protein_g, carbs_g, fat_g)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       e.entry_date,
-      e.meal,
+      e.meal_id,
       e.source,
       e.custom_food_id,
       e.recipe_id,
@@ -83,7 +83,7 @@ export function addDiaryEntry(e: NewDiaryEntry): DiaryEntry {
     );
   return getDb()
     .prepare(
-      `SELECT id, entry_date, meal, source, custom_food_id, recipe_id, description, grams,
+      `SELECT id, entry_date, meal_id, source, custom_food_id, recipe_id, description, grams,
               kcal, protein_g, carbs_g, fat_g, created_at
          FROM diary_entries WHERE id = ?`,
     )

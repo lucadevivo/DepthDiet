@@ -28,14 +28,10 @@ import {
   isLidarSupported,
   LidarCancelled,
 } from "../src/lib/lidarMeal";
-import { MEAL_LABELS, type MealName } from "../src/types/nutrition";
+import { MealPicker } from "../src/components/MealPicker";
+import { useMealsQuery } from "../src/hooks/useMeals";
 import type { AnalyzeBody, AnalyzeResult, MealItem, ReferenceType } from "../src/types/analyze";
 import type { AddDiaryBody } from "../src/types/diary";
-
-const MEAL_OPTIONS = (Object.keys(MEAL_LABELS) as MealName[]).map((m) => ({
-  value: m,
-  label: MEAL_LABELS[m],
-}));
 
 /** Sorgenti di cattura: galleria/fotocamera (4a) + LiDAR a inquadratura singola (4b). */
 type CaptureSource = ImageSource | "lidar";
@@ -117,13 +113,15 @@ export default function AnalyzeScreen() {
   const router = useRouter();
 
   // Pasto e data ereditati dal Diario (così lo scan finisce sul giorno giusto).
-  const params = useLocalSearchParams<{ meal?: string; date?: string }>();
+  const params = useLocalSearchParams<{ meal_id?: string; date?: string }>();
   const date = params.date && /^\d{4}-\d{2}-\d{2}$/.test(params.date) ? params.date : todayISO();
-  const initialMeal: MealName =
-    params.meal && params.meal in MEAL_LABELS ? (params.meal as MealName) : "lunch";
+  const meals = useMealsQuery();
+  const paramMealId = params.meal_id ? Number(params.meal_id) : NaN;
 
   const [phase, setPhase] = useState<Phase>("pick");
-  const [meal, setMeal] = useState<MealName>(initialMeal);
+  const [mealId, setMealId] = useState<number | null>(
+    Number.isInteger(paramMealId) ? paramMealId : null,
+  );
   const [contextText, setContextText] = useState("");
   const [reference, setReference] = useState<RefChoice>("none");
   const [items, setItems] = useState<EditItem[]>([]);
@@ -215,6 +213,7 @@ export default function AnalyzeScreen() {
 
   const confirmToDiary = async () => {
     setError(null);
+    if (mealId == null) return;
     const chosen = items.filter((it) => it.included);
     if (chosen.length === 0) return;
     try {
@@ -224,10 +223,10 @@ export default function AnalyzeScreen() {
         let body: AddDiaryBody;
         if (it.foodId != null) {
           // Abbinato (o salvato come Alimento): il backend ricalcola i macro per grammatura.
-          body = { date, meal, type: "custom_food", food_id: it.foodId, grams };
+          body = { date, meal_id: mealId, type: "custom_food", food_id: it.foodId, grams };
         } else {
           const m = scaled(it);
-          body = { date, meal, type: "scan", description: it.name, grams, ...m };
+          body = { date, meal_id: mealId, type: "scan", description: it.name, grams, ...m };
         }
         await addEntry.mutateAsync(body);
       }
@@ -247,7 +246,12 @@ export default function AnalyzeScreen() {
           </Text>
 
           <Text style={styles.label}>Pasto</Text>
-          <SegmentedControl options={MEAL_OPTIONS} value={meal} onChange={setMeal} />
+          <MealPicker
+            meals={meals.data ?? []}
+            loading={meals.isLoading}
+            value={mealId}
+            onChange={setMealId}
+          />
 
           <Text style={styles.label}>Contesto (opzionale)</Text>
           <TextInput
@@ -319,7 +323,8 @@ export default function AnalyzeScreen() {
       <ScreenHeader title="Conferma il pasto" />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Text style={styles.lead}>
-          Controlla gli abbinamenti e le quantità, poi aggiungi al diario ({MEAL_LABELS[meal]}).
+          Controlla gli abbinamenti e le quantità, poi aggiungi al diario (
+          {meals.data?.find((m) => m.id === mealId)?.name ?? "—"}).
         </Text>
         {usedHint ? <Text style={styles.hint}>{usedHint}</Text> : null}
         {notes ? (

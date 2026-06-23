@@ -13,6 +13,7 @@ import { profileRouter } from "./profile.js";
 import { foodsRouter } from "./foods.js";
 import { recipesRouter } from "./recipes.js";
 import { diaryRouter } from "./diary.js";
+import { mealsRouter } from "./meals.js";
 import { offRouter } from "./off.js";
 import { weightRouter } from "./weight.js";
 
@@ -33,6 +34,9 @@ apiRouter.use("/profile", profileRouter);
 apiRouter.use("/foods", foodsRouter);
 apiRouter.use("/recipes", recipesRouter);
 apiRouter.use("/diary", diaryRouter);
+
+// F3 — Pasti personalizzati.
+apiRouter.use("/meals", mealsRouter);
 
 // Fase 3c — Open Food Facts (ricerca + barcode).
 apiRouter.use("/off", offRouter);

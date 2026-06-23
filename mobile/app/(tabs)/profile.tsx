@@ -120,6 +120,12 @@ export default function ProfileScreen() {
                 <Text style={styles.catalogText}>Recipes</Text>
               </Pressable>
             </Link>
+            <Link href="/meals" asChild>
+              <Pressable style={styles.catalogPill}>
+                <Icon name="meals" size={18} color={colors.textMuted} />
+                <Text style={styles.catalogText}>Meals</Text>
+              </Pressable>
+            </Link>
           </View>
 
           <View style={styles.formCard}>

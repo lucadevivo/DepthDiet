@@ -28,6 +28,7 @@ const MAP = {
   gallery: "images-outline",
   food: "nutrition-outline",
   recipe: "restaurant-outline",
+  meals: "fast-food-outline",
   barcode: "barcode-outline",
   bulb: "bulb-outline",
   ruler: "resize-outline",

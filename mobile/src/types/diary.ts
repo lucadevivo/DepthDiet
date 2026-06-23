@@ -1,12 +1,12 @@
 import type { Macros } from "./food";
-import type { MealName } from "./nutrition";
 
 export type DiarySource = "manual" | "custom_food" | "recipe" | "scan" | "off";
 
 export interface DiaryEntry {
   id: number;
   entry_date: string;
-  meal: MealName;
+  /** Pasto di appartenenza; null se il pasto è stato eliminato (gruppo "Other"). */
+  meal_id: number | null;
   source: DiarySource;
   custom_food_id: number | null;
   recipe_id: number | null;
@@ -27,11 +27,11 @@ export interface DiaryDay {
 
 /** Corpo per aggiungere una voce al diario (le modalità del backend). */
 export type AddDiaryBody =
-  | { date: string; meal: MealName; type: "custom_food"; food_id: number; grams: number }
-  | { date: string; meal: MealName; type: "recipe"; recipe_id: number; multiplier?: number }
+  | { date: string; meal_id: number; type: "custom_food"; food_id: number; grams: number }
+  | { date: string; meal_id: number; type: "recipe"; recipe_id: number; multiplier?: number }
   | {
       date: string;
-      meal: MealName;
+      meal_id: number;
       type: "manual" | "scan";
       description: string;
       kcal: number;

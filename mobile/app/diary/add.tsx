@@ -12,25 +12,22 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { ScreenHeader } from "../../src/components/ScreenHeader";
 import { NumberField } from "../../src/components/NumberField";
 import { SegmentedControl } from "../../src/components/SegmentedControl";
+import { MealPicker } from "../../src/components/MealPicker";
 import { Icon } from "../../src/components/Icon";
 import { colors } from "../../src/theme/colors";
 import { todayISO } from "../../src/lib/date";
 import { useAddDiaryEntry } from "../../src/hooks/useDiary";
+import { useMealsQuery } from "../../src/hooks/useMeals";
 import { useFoodsQuery, useRecipesQuery } from "../../src/hooks/useFoods";
-import { MEAL_LABELS, type MealName } from "../../src/types/nutrition";
 import type { AddDiaryBody } from "../../src/types/diary";
 import type { CustomFood, RecipeSummary } from "../../src/types/food";
 
 type Mode = "custom_food" | "recipe" | "manual";
 
-const MEAL_OPTIONS = (Object.keys(MEAL_LABELS) as MealName[]).map((m) => ({
-  value: m,
-  label: MEAL_LABELS[m],
-}));
 const MODE_OPTIONS: { value: Mode; label: string }[] = [
-  { value: "custom_food", label: "Alimento" },
-  { value: "recipe", label: "Ricetta" },
-  { value: "manual", label: "Manuale" },
+  { value: "custom_food", label: "Food" },
+  { value: "recipe", label: "Recipe" },
+  { value: "manual", label: "Manual" },
 ];
 
 export default function AddDiaryScreen() {
@@ -38,13 +35,15 @@ export default function AddDiaryScreen() {
 
   // Pasto e data preselezionati dalla MealCard del Diario (la data fa sì che la
   // voce finisca sul giorno che stai guardando, non sempre su oggi).
-  const params = useLocalSearchParams<{ meal?: string; date?: string }>();
+  const params = useLocalSearchParams<{ meal_id?: string; date?: string }>();
   const date = params.date && /^\d{4}-\d{2}-\d{2}$/.test(params.date) ? params.date : todayISO();
   const add = useAddDiaryEntry(date);
+  const meals = useMealsQuery();
 
-  const initialMeal: MealName =
-    params.meal && params.meal in MEAL_LABELS ? (params.meal as MealName) : "lunch";
-  const [meal, setMeal] = useState<MealName>(initialMeal);
+  const paramMealId = params.meal_id ? Number(params.meal_id) : NaN;
+  const [mealId, setMealId] = useState<number | null>(
+    Number.isInteger(paramMealId) ? paramMealId : null,
+  );
   const [mode, setMode] = useState<Mode>("custom_food");
 
   // Alimento
@@ -65,20 +64,21 @@ export default function AddDiaryScreen() {
   const [f, setF] = useState("");
 
   const onSubmit = () => {
+    if (mealId == null) return;
     let body: AddDiaryBody | null = null;
     if (mode === "custom_food") {
       const g = Number.parseFloat(grams);
       if (foodId == null || !Number.isFinite(g) || g <= 0) return;
-      body = { date, meal, type: "custom_food", food_id: foodId, grams: g };
+      body = { date, meal_id: mealId, type: "custom_food", food_id: foodId, grams: g };
     } else if (mode === "recipe") {
       if (recipeId == null) return;
-      body = { date, meal, type: "recipe", recipe_id: recipeId };
+      body = { date, meal_id: mealId, type: "recipe", recipe_id: recipeId };
     } else {
       const nk = Number.parseFloat(kcal);
       if (!desc.trim() || !Number.isFinite(nk)) return;
       body = {
         date,
-        meal,
+        meal_id: mealId,
         type: "manual",
         description: desc.trim(),
         kcal: nk,
@@ -92,29 +92,36 @@ export default function AddDiaryScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader title="Aggiungi al diario" />
+      <ScreenHeader title="Add to diary" />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {/* Scorciatoia: fotografa il pasto invece di inserirlo a mano. */}
         <Pressable
           style={styles.scanBtn}
-          onPress={() => router.push(`/analyze?meal=${meal}&date=${date}`)}
+          onPress={() =>
+            router.push(`/analyze?meal_id=${mealId ?? ""}&date=${date}`)
+          }
         >
           <Icon name="scan" size={20} color={colors.primary} />
-          <Text style={styles.scanText}>Scansiona pasto con la fotocamera</Text>
+          <Text style={styles.scanText}>Scan a meal with the camera</Text>
           <Icon name="chevron" size={18} color={colors.textMuted} />
         </Pressable>
 
-        <Label text="Pasto" />
-        <SegmentedControl options={MEAL_OPTIONS} value={meal} onChange={setMeal} />
+        <Label text="Meal" />
+        <MealPicker
+          meals={meals.data ?? []}
+          loading={meals.isLoading}
+          value={mealId}
+          onChange={setMealId}
+        />
 
-        <Label text="Tipo" />
+        <Label text="Type" />
         <SegmentedControl options={MODE_OPTIONS} value={mode} onChange={setMode} />
 
         {mode === "custom_food" ? (
           <>
             <TextInput
               style={styles.input}
-              placeholder="Cerca un alimento..."
+              placeholder="Search a food..."
               placeholderTextColor={colors.textMuted}
               value={search}
               onChangeText={setSearch}
@@ -126,9 +133,9 @@ export default function AddDiaryScreen() {
               selectedId={foodId}
               onSelect={setFoodId}
               render={(food: CustomFood) => `${food.name}  ·  ${food.kcal_per_100} kcal/100g`}
-              emptyText="Nessun alimento. Creane uno dalla schermata Alimenti."
+              emptyText="No foods yet. Create one from the Foods screen."
             />
-            <NumberField label="Grammi" value={grams} onChangeText={setGrams} unit="g" />
+            <NumberField label="Grams" value={grams} onChangeText={setGrams} unit="g" />
           </>
         ) : null}
 
@@ -140,7 +147,7 @@ export default function AddDiaryScreen() {
             selectedId={recipeId}
             onSelect={setRecipeId}
             render={(r: RecipeSummary) => `${r.name}  ·  ${r.totals.kcal} kcal`}
-            emptyText="Nessuna ricetta. Creane una dalla schermata Ricette."
+            emptyText="No recipes yet. Create one from the Recipes screen."
           />
         ) : null}
 
@@ -148,30 +155,34 @@ export default function AddDiaryScreen() {
           <>
             <TextInput
               style={styles.input}
-              placeholder="Descrizione (es. Mela)"
+              placeholder="Description (e.g. Apple)"
               placeholderTextColor={colors.textMuted}
               value={desc}
               onChangeText={setDesc}
             />
             <View style={styles.row}>
               <NumberField label="Kcal" value={kcal} onChangeText={setKcal} />
-              <NumberField label="Proteine" value={p} onChangeText={setP} unit="g" />
+              <NumberField label="Protein" value={p} onChangeText={setP} unit="g" />
             </View>
             <View style={styles.row}>
-              <NumberField label="Carbo" value={c} onChangeText={setC} unit="g" />
-              <NumberField label="Grassi" value={f} onChangeText={setF} unit="g" />
+              <NumberField label="Carbs" value={c} onChangeText={setC} unit="g" />
+              <NumberField label="Fat" value={f} onChangeText={setF} unit="g" />
             </View>
           </>
         ) : null}
 
-        <Pressable onPress={onSubmit} disabled={add.isPending} style={[styles.saveBtn, add.isPending && styles.disabled]}>
+        <Pressable
+          onPress={onSubmit}
+          disabled={add.isPending || mealId == null}
+          style={[styles.saveBtn, (add.isPending || mealId == null) && styles.disabled]}
+        >
           {add.isPending ? (
             <ActivityIndicator color={colors.onPrimary} />
           ) : (
-            <Text style={styles.saveText}>Aggiungi</Text>
+            <Text style={styles.saveText}>Add</Text>
           )}
         </Pressable>
-        {add.isError ? <Text style={styles.error}>Errore. Riprova.</Text> : null}
+        {add.isError ? <Text style={styles.error}>Something went wrong. Try again.</Text> : null}
       </ScrollView>
     </View>
   );
@@ -196,7 +207,7 @@ function PickList<T extends { id: number }>({
   emptyText,
 }: PickListProps<T>) {
   if (loading) return <ActivityIndicator color={colors.protein} style={{ marginVertical: 12 }} />;
-  if (error) return <Text style={styles.error}>Errore di caricamento.</Text>;
+  if (error) return <Text style={styles.error}>Failed to load.</Text>;
   if (items.length === 0) return <Text style={styles.empty}>{emptyText}</Text>;
   return (
     <View style={{ gap: 8 }}>

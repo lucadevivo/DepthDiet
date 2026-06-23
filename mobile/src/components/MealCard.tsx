@@ -8,6 +8,8 @@ interface Props {
   entries: DiaryEntry[];
   onAdd: () => void;
   onDelete: (id: number) => void;
+  /** Nasconde il bottone "Add" (es. gruppo "Other" dei pasti eliminati). */
+  showAdd?: boolean;
 }
 
 /** Una cella della mini-tabella macro (valore sopra, etichetta colorata sotto). */
@@ -28,7 +30,7 @@ function MacroCell({ value, label, color, unit = "" }: { value: number; label: s
  * (Carb/Prot/Grassi/Calorie), elenco voci con eliminazione e bottone "Aggiungi".
  * I totali del pasto sono calcolati dalle voci.
  */
-export function MealCard({ title, entries, onAdd, onDelete }: Props) {
+export function MealCard({ title, entries, onAdd, onDelete, showAdd = true }: Props) {
   const t = entries.reduce(
     (acc, e) => {
       acc.kcal += e.kcal;
@@ -72,10 +74,12 @@ export function MealCard({ title, entries, onAdd, onDelete }: Props) {
         </View>
       ) : null}
 
-      <Pressable onPress={onAdd} style={styles.addBtn} hitSlop={6}>
-        <Icon name="add" size={18} color={colors.primary} />
-        <Text style={styles.addText}>Add</Text>
-      </Pressable>
+      {showAdd ? (
+        <Pressable onPress={onAdd} style={styles.addBtn} hitSlop={6}>
+          <Icon name="add" size={18} color={colors.primary} />
+          <Text style={styles.addText}>Add</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
