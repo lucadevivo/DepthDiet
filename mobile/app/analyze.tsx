@@ -22,14 +22,40 @@ import {
   ImagePickCancelled,
   type ImageSource,
 } from "../src/lib/mealImage";
+import {
+  captureMealWithLidar,
+  isLidarSupported,
+  LidarCancelled,
+} from "../src/lib/lidarMeal";
 import { MEAL_LABELS, type MealName } from "../src/types/nutrition";
-import type { AnalyzeResult, MealItem } from "../src/types/analyze";
+import type { AnalyzeBody, AnalyzeResult, MealItem, ReferenceType } from "../src/types/analyze";
 import type { AddDiaryBody } from "../src/types/diary";
 
 const MEAL_OPTIONS = (Object.keys(MEAL_LABELS) as MealName[]).map((m) => ({
   value: m,
   label: MEAL_LABELS[m],
 }));
+
+/** Sorgenti di cattura: galleria/fotocamera (4a) + LiDAR a inquadratura singola (4b). */
+type CaptureSource = ImageSource | "lidar";
+
+type RefChoice = ReferenceType | "none";
+const REFERENCE_OPTIONS: { value: RefChoice; label: string }[] = [
+  { value: "none", label: "Nessuno" },
+  { value: "card_iso", label: "Carta" },
+  { value: "coin_1eur", label: "1€" },
+  { value: "coin_2eur", label: "2€" },
+];
+const REF_HINT: Record<ReferenceType, string> = {
+  card_iso: "righello: carta",
+  coin_1eur: "righello: moneta 1€",
+  coin_2eur: "righello: moneta 2€",
+};
+const QUALITY_HINT: Record<"high" | "medium" | "low", string> = {
+  high: "qualità alta",
+  medium: "qualità media",
+  low: "qualità bassa",
+};
 
 type Phase = "pick" | "review";
 
@@ -93,8 +119,10 @@ export default function AnalyzeScreen() {
   const [phase, setPhase] = useState<Phase>("pick");
   const [meal, setMeal] = useState<MealName>("lunch");
   const [contextText, setContextText] = useState("");
+  const [reference, setReference] = useState<RefChoice>("none");
   const [items, setItems] = useState<EditItem[]>([]);
   const [notes, setNotes] = useState<string | undefined>();
+  const [usedHint, setUsedHint] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [savingKey, setSavingKey] = useState<string | null>(null);
 
@@ -102,25 +130,49 @@ export default function AnalyzeScreen() {
   const addEntry = useAddDiaryEntry(date);
   const createFood = useCreateFood();
 
+  // Il bottone LiDAR appare solo se il modulo nativo è presente e il device lo supporta.
+  const [lidarOn] = useState(isLidarSupported);
   const busy = analyze.isPending;
 
-  const startAnalysis = async (source: ImageSource) => {
+  const startAnalysis = async (source: CaptureSource) => {
     setError(null);
+    const ref = reference === "none" ? undefined : { type: reference };
+    const hints: string[] = [];
+    if (reference !== "none") hints.push(REF_HINT[reference]);
     try {
-      const img = await pickAndPrepareMealImage(source);
-      const result = await analyze.mutateAsync({
-        imageBase64: img.base64,
-        mimeType: img.mimeType,
-        contextText: contextText.trim() || undefined,
-      });
+      let body: AnalyzeBody;
+      if (source === "lidar") {
+        const cap = await captureMealWithLidar();
+        const depth =
+          cap.quality !== "none" ? { volumeMl: cap.volumeMl, quality: cap.quality } : undefined;
+        if (depth) hints.push(`📐 volume ~${Math.round(cap.volumeMl)} ml · ${QUALITY_HINT[depth.quality]}`);
+        body = {
+          imageBase64: cap.imageBase64,
+          mimeType: cap.mimeType,
+          contextText: contextText.trim() || undefined,
+          depth,
+          reference: ref,
+        };
+      } else {
+        const img = await pickAndPrepareMealImage(source);
+        body = {
+          imageBase64: img.base64,
+          mimeType: img.mimeType,
+          contextText: contextText.trim() || undefined,
+          reference: ref,
+        };
+      }
+      const result = await analyze.mutateAsync(body);
       if (result.items.length === 0) {
         setError("Nessun alimento riconosciuto. Riprova con una foto più nitida o aggiungi del contesto.");
         return;
       }
       setItems(toEditItems(result));
       setNotes(result.notes);
+      setUsedHint(hints.length ? hints.join(" · ") : null);
       setPhase("review");
     } catch (e) {
+      if (e instanceof LidarCancelled) return; // annullato dall'utente
       if (e instanceof ImagePickCancelled) {
         if (e.reason === "permission_denied") {
           setError("Serve il permesso per fotocamera/galleria. Abilitalo dalle impostazioni.");
@@ -201,6 +253,13 @@ export default function AnalyzeScreen() {
             multiline
           />
 
+          <Text style={styles.label}>Oggetto di riferimento (opzionale)</Text>
+          <SegmentedControl options={REFERENCE_OPTIONS} value={reference} onChange={setReference} />
+          <Text style={styles.hintSmall}>
+            Metti una carta o una moneta accanto al piatto: l'IA la usa come righello per
+            stimare meglio le porzioni.
+          </Text>
+
           {busy ? (
             <View style={styles.busy}>
               <ActivityIndicator color={colors.calories} />
@@ -208,8 +267,16 @@ export default function AnalyzeScreen() {
             </View>
           ) : (
             <View style={{ gap: 10, marginTop: 8 }}>
-              <Pressable style={styles.primaryBtn} onPress={() => startAnalysis("camera")}>
-                <Text style={styles.primaryText}>📷  Scatta foto</Text>
+              {lidarOn ? (
+                <Pressable style={styles.primaryBtn} onPress={() => startAnalysis("lidar")}>
+                  <Text style={styles.primaryText}>📐  Misura con LiDAR</Text>
+                </Pressable>
+              ) : null}
+              <Pressable
+                style={lidarOn ? styles.secondaryBtn : styles.primaryBtn}
+                onPress={() => startAnalysis("camera")}
+              >
+                <Text style={lidarOn ? styles.secondaryText : styles.primaryText}>📷  Scatta foto</Text>
               </Pressable>
               <Pressable style={styles.secondaryBtn} onPress={() => startAnalysis("library")}>
                 <Text style={styles.secondaryText}>🖼️  Scegli dalla galleria</Text>
@@ -246,6 +313,7 @@ export default function AnalyzeScreen() {
         <Text style={styles.lead}>
           Controlla gli abbinamenti e le quantità, poi aggiungi al diario ({MEAL_LABELS[meal]}).
         </Text>
+        {usedHint ? <Text style={styles.hint}>{usedHint}</Text> : null}
         {notes ? <Text style={styles.notes}>💡 {notes}</Text> : null}
 
         {items.map((it) => {
@@ -366,6 +434,17 @@ const styles = StyleSheet.create({
   },
   secondaryText: { color: colors.text, fontSize: 15, fontWeight: "700" },
   disabled: { opacity: 0.5 },
+  hintSmall: { color: colors.textMuted, fontSize: 12, lineHeight: 16, marginTop: -2 },
+  hint: {
+    color: colors.protein,
+    fontSize: 13,
+    fontWeight: "700",
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    overflow: "hidden",
+  },
   notes: { color: colors.textMuted, fontSize: 13, fontStyle: "italic" },
   card: {
     backgroundColor: colors.surface,

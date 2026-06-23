@@ -36,6 +36,12 @@ export interface AnalyzeResult extends MealAnalysis {
   model: string;
 }
 
+/** Qualità della misura volumetrica dal sensore (Fase 4b). */
+export type DepthQuality = "high" | "medium" | "low";
+
+/** Oggetti di riferimento di dimensioni note usabili come righello (Fase 4b). */
+export type ReferenceType = "card_iso" | "coin_1eur" | "coin_2eur";
+
 /** Input dell'analisi pasto. */
 export interface AnalyzeInput {
   /** Immagine del pasto in base64 (già compressa/ridimensionata dal client). */
@@ -45,5 +51,7 @@ export interface AnalyzeInput {
   /** Contesto testuale opzionale (es. "ci sono 30g di parmigiano sotto"). */
   contextText?: string;
   /** Ipotesi volumetrica opzionale dal LiDAR (Fase 4b). Trattata come stima approssimativa. */
-  depth?: { volumeMl?: number };
+  depth?: { volumeMl?: number; quality?: DepthQuality };
+  /** Oggetto di riferimento di scala presente in foto (Fase 4b), aiuta a stimare le porzioni. */
+  reference?: { type: ReferenceType };
 }

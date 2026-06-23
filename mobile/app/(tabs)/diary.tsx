@@ -37,12 +37,12 @@ export default function DiaryScreen() {
 
       <View style={styles.actions}>
         <Link href="/analyze" asChild>
-          <Pressable style={[styles.scanBtn, styles.actionItem]}>
+          <Pressable style={StyleSheet.flatten([styles.scanBtn, styles.actionItem])}>
             <Text style={styles.scanText}>📷 Scansiona pasto</Text>
           </Pressable>
         </Link>
         <Link href="/diary/add" asChild>
-          <Pressable style={[styles.addBtn, styles.actionItem]}>
+          <Pressable style={StyleSheet.flatten([styles.addBtn, styles.actionItem])}>
             <Text style={styles.addText}>+ Aggiungi</Text>
           </Pressable>
         </Link>

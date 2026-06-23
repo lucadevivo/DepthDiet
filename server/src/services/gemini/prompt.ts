@@ -1,5 +1,18 @@
 import type { CustomFood } from "../../repositories/customFoods.js";
-import type { AnalyzeInput } from "./types.js";
+import type { AnalyzeInput, DepthQuality, ReferenceType } from "./types.js";
+
+/** Descrizione (con dimensioni reali) degli oggetti di riferimento, per il prompt. */
+const REFERENCE_LABEL: Record<ReferenceType, string> = {
+  card_iso: "una carta formato bancomat/credito (ISO ID-1, 85.6 × 54 mm)",
+  coin_1eur: "una moneta da 1 euro (diametro 23.25 mm)",
+  coin_2eur: "una moneta da 2 euro (diametro 25.75 mm)",
+};
+
+const DEPTH_QUALITY_LABEL: Record<DepthQuality, string> = {
+  high: "alta",
+  medium: "media",
+  low: "bassa",
+};
 
 /**
  * Costruisce il prompt testuale che accompagna l'immagine. Lo schema JSON è già
@@ -41,13 +54,28 @@ export function buildMealPrompt(input: AnalyzeInput, matched: CustomFood[]): str
     }
   }
 
-  if (input.depth?.volumeMl != null) {
+  if (input.reference?.type != null) {
     lines.push(
       "",
-      `Indizio volumetrico (da sensore di profondità): ~${Math.round(input.depth.volumeMl)} ml.`,
-      "Usalo SOLO come aiuto per stimare le porzioni: volume→massa→macro richiede",
-      "assunzioni di densità, quindi trattalo come stima approssimativa, non certa.",
+      `In foto è presente un OGGETTO DI RIFERIMENTO di dimensioni note: ${REFERENCE_LABEL[input.reference.type]}.`,
+      "Usalo come righello: misura le dimensioni del cibo rispetto al riferimento per",
+      "stimare le porzioni reali (e quindi i grammi) con più precisione.",
+      "Non conteggiare l'oggetto di riferimento tra gli alimenti.",
     );
+  }
+
+  if (input.depth?.volumeMl != null) {
+    const q = input.depth.quality ?? "medium";
+    lines.push(
+      "",
+      `Indizio volumetrico (da sensore di profondità LiDAR): ~${Math.round(input.depth.volumeMl)} ml` +
+        ` (affidabilità della misura: ${DEPTH_QUALITY_LABEL[q]}).`,
+      "Usalo come aiuto per stimare le porzioni: volume→massa→macro richiede assunzioni",
+      "di densità, quindi trattalo come stima approssimativa, non certa.",
+    );
+    if (q === "low") {
+      lines.push("Affidabilità BASSA: pesalo poco e dai priorità a ciò che vedi nell'immagine.");
+    }
   }
 
   lines.push(

@@ -1,0 +1,7 @@
+{
+  "name": "lidar-meal",
+  "version": "1.0.0",
+  "description": "Cattura LiDAR a inquadratura singola: foto RGB + stima volume del cibo (Fase 4b).",
+  "main": "index.ts",
+  "private": true
+}

@@ -35,9 +35,19 @@ export interface AnalyzeResult {
   model: string;
 }
 
+/** Qualità della misura volumetrica dal LiDAR (Fase 4b). */
+export type DepthQuality = "high" | "medium" | "low";
+
+/** Oggetti di riferimento di dimensioni note usabili come righello (Fase 4b). */
+export type ReferenceType = "card_iso" | "coin_1eur" | "coin_2eur";
+
 /** Corpo della richiesta /api/analyze. */
 export interface AnalyzeBody {
   imageBase64: string;
   mimeType: string;
   contextText?: string;
+  /** Ipotesi volumetrica dal LiDAR (Fase 4b). */
+  depth?: { volumeMl?: number; quality?: DepthQuality };
+  /** Oggetto di riferimento di scala presente in foto (Fase 4b). */
+  reference?: { type: ReferenceType };
 }

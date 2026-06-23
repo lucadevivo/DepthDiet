@@ -4,7 +4,11 @@ import {
   GeminiNotConfiguredError,
   GeminiParseError,
 } from "../services/gemini/client.js";
-import type { AnalyzeInput } from "../services/gemini/types.js";
+import type {
+  AnalyzeInput,
+  DepthQuality,
+  ReferenceType,
+} from "../services/gemini/types.js";
 import { profileRouter } from "./profile.js";
 import { foodsRouter } from "./foods.js";
 import { recipesRouter } from "./recipes.js";
@@ -49,15 +53,26 @@ function parseAnalyzeBody(body: unknown): AnalyzeInput | { error: string } {
   }
   const input: AnalyzeInput = { imageBase64: b.imageBase64, mimeType: b.mimeType };
   if (typeof b.contextText === "string") input.contextText = b.contextText;
-  if (
-    typeof b.depth === "object" &&
-    b.depth !== null &&
-    typeof (b.depth as Record<string, unknown>).volumeMl === "number"
-  ) {
-    input.depth = { volumeMl: (b.depth as { volumeMl: number }).volumeMl };
+  if (typeof b.depth === "object" && b.depth !== null) {
+    const d = b.depth as Record<string, unknown>;
+    if (typeof d.volumeMl === "number" && Number.isFinite(d.volumeMl) && d.volumeMl > 0) {
+      input.depth = { volumeMl: d.volumeMl };
+      if (DEPTH_QUALITIES.includes(d.quality as DepthQuality)) {
+        input.depth.quality = d.quality as DepthQuality;
+      }
+    }
+  }
+  if (typeof b.reference === "object" && b.reference !== null) {
+    const r = b.reference as Record<string, unknown>;
+    if (REFERENCE_TYPES.includes(r.type as ReferenceType)) {
+      input.reference = { type: r.type as ReferenceType };
+    }
   }
   return input;
 }
+
+const DEPTH_QUALITIES: DepthQuality[] = ["high", "medium", "low"];
+const REFERENCE_TYPES: ReferenceType[] = ["card_iso", "coin_1eur", "coin_2eur"];
 
 /**
  * Scanner IA: riceve immagine (+ testo + depth opzionali), chiama Gemini con
