@@ -267,17 +267,17 @@ export default function AnalyzeScreen() {
             </View>
           ) : (
             <View style={{ gap: 10, marginTop: 8 }}>
-              {lidarOn ? (
-                <Pressable style={styles.primaryBtn} onPress={() => startAnalysis("lidar")}>
-                  <Text style={styles.primaryText}>📐  Misura con LiDAR</Text>
-                </Pressable>
-              ) : null}
               <Pressable
-                style={lidarOn ? styles.secondaryBtn : styles.primaryBtn}
-                onPress={() => startAnalysis("camera")}
+                style={styles.primaryBtn}
+                onPress={() => startAnalysis(lidarOn ? "lidar" : "camera")}
               >
-                <Text style={lidarOn ? styles.secondaryText : styles.primaryText}>📷  Scatta foto</Text>
+                <Text style={styles.primaryText}>📷  Scatta foto</Text>
               </Pressable>
+              {lidarOn ? (
+                <Text style={styles.hintSmall}>
+                  Sul tuo iPhone lo scatto misura anche il volume del cibo col LiDAR, in automatico.
+                </Text>
+              ) : null}
               <Pressable style={styles.secondaryBtn} onPress={() => startAnalysis("library")}>
                 <Text style={styles.secondaryText}>🖼️  Scegli dalla galleria</Text>
               </Pressable>
