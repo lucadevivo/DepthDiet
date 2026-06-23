@@ -1,7 +1,10 @@
 import { ScrollView, View, Text, ActivityIndicator, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 import { CalorieSummary } from "../../src/components/CalorieSummary";
 import { MacroBar } from "../../src/components/MacroBar";
+import { MacroSplitBar } from "../../src/components/MacroSplitBar";
+import { MetricCard } from "../../src/components/MetricCard";
 import { WaterCounter } from "../../src/components/WaterCounter";
 import { colors } from "../../src/theme/colors";
 import { todayISO } from "../../src/lib/date";
@@ -12,12 +15,13 @@ import { useProfileQuery } from "../../src/hooks/useProfile";
 const FALLBACK_TARGETS = { calories: 2600, protein_g: 190, carbs_g: 270, fat_g: 75 };
 
 /**
- * Dashboard Giornaliera — ora collegata ai dati REALI (Fase 3b):
- * totali dal diario di oggi, obiettivi dal profilo. L'acqua resta su Zustand
- * (il backend acqua arriverà più avanti).
+ * Dashboard Giornaliera (stile "Macros"): calorie del giorno, distribuzione
+ * macro a segmenti, dettaglio macronutrienti, acqua e card metriche di accesso
+ * rapido. Dati reali: totali dal diario di oggi, obiettivi dal profilo.
  */
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const date = todayISO();
   const diary = useDiaryQuery(date);
   const profile = useProfileQuery();
@@ -37,10 +41,10 @@ export default function DashboardScreen() {
       style={styles.screen}
       contentContainerStyle={[styles.content, { paddingTop: insets.top + 8 }]}
     >
-      <Text style={styles.heading}>Dashboard</Text>
+      <Text style={styles.heading}>Oggi</Text>
 
       {diary.isLoading ? (
-        <ActivityIndicator color={colors.protein} style={{ marginTop: 24 }} />
+        <ActivityIndicator color={colors.primary} style={{ marginTop: 24 }} />
       ) : (
         <>
           {diary.isError ? (
@@ -50,6 +54,15 @@ export default function DashboardScreen() {
           ) : null}
 
           <CalorieSummary consumed={totals.kcal} target={targets.calories} />
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Distribuzione macro</Text>
+            <MacroSplitBar
+              protein_g={totals.protein_g}
+              carbs_g={totals.carbs_g}
+              fat_g={totals.fat_g}
+            />
+          </View>
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Macronutrienti</Text>
@@ -72,11 +85,20 @@ export default function DashboardScreen() {
 
           <WaterCounter targetMl={waterTarget} />
 
-          {p?.target_calories == null ? (
-            <Text style={styles.note}>
-              Imposta i tuoi obiettivi nella tab Profilo per target personalizzati.
-            </Text>
-          ) : null}
+          <MetricCard
+            icon="weight"
+            iconColor={colors.protein}
+            label="Peso attuale"
+            value={p?.weight_kg != null ? `${p.weight_kg} kg` : "Da impostare"}
+            onPress={() => router.push("/weight")}
+          />
+          <MetricCard
+            icon="goal"
+            iconColor={colors.primary}
+            label="Fabbisogno calorico"
+            value={p?.target_calories != null ? `${p.target_calories} kcal` : "Calcola nel Profilo"}
+            onPress={() => router.push("/profile")}
+          />
         </>
       )}
     </ScrollView>
@@ -85,7 +107,7 @@ export default function DashboardScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: 16, gap: 18, paddingBottom: 40 },
+  content: { padding: 16, gap: 16, paddingBottom: 40 },
   heading: { color: colors.text, fontSize: 28, fontWeight: "800" },
   section: {
     backgroundColor: colors.surface,
@@ -96,6 +118,5 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   sectionTitle: { color: colors.text, fontSize: 16, fontWeight: "700" },
-  note: { color: colors.textMuted, fontSize: 12, textAlign: "center" },
-  error: { color: colors.fat, fontSize: 12, textAlign: "center" },
+  error: { color: colors.primary, fontSize: 12, textAlign: "center" },
 });

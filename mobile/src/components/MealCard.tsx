@@ -1,5 +1,6 @@
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { colors } from "../theme/colors";
+import { Icon } from "./Icon";
 import type { DiaryEntry } from "../types/diary";
 
 interface Props {
@@ -64,7 +65,7 @@ export function MealCard({ title, entries, onAdd, onDelete }: Props) {
                 </Text>
               </View>
               <Pressable onPress={() => onDelete(e.id)} hitSlop={10} style={styles.del}>
-                <Text style={styles.delText}>✕</Text>
+                <Icon name="close" size={16} color={colors.textMuted} />
               </Pressable>
             </View>
           ))}
@@ -72,7 +73,8 @@ export function MealCard({ title, entries, onAdd, onDelete }: Props) {
       ) : null}
 
       <Pressable onPress={onAdd} style={styles.addBtn} hitSlop={6}>
-        <Text style={styles.addText}>＋ Aggiungi</Text>
+        <Icon name="add" size={18} color={colors.primary} />
+        <Text style={styles.addText}>Aggiungi</Text>
       </Pressable>
     </View>
   );
@@ -106,8 +108,14 @@ const styles = StyleSheet.create({
   entryName: { color: colors.text, fontSize: 14, fontWeight: "600" },
   entryMeta: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
   del: { paddingLeft: 12 },
-  delText: { color: colors.textMuted, fontSize: 15, fontWeight: "700" },
 
-  addBtn: { alignSelf: "center", paddingVertical: 4 },
+  addBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    alignSelf: "center",
+    paddingVertical: 4,
+  },
   addText: { color: colors.primary, fontSize: 15, fontWeight: "700" },
 });

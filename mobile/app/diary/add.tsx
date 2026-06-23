@@ -12,6 +12,7 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { ScreenHeader } from "../../src/components/ScreenHeader";
 import { NumberField } from "../../src/components/NumberField";
 import { SegmentedControl } from "../../src/components/SegmentedControl";
+import { Icon } from "../../src/components/Icon";
 import { colors } from "../../src/theme/colors";
 import { todayISO } from "../../src/lib/date";
 import { useAddDiaryEntry } from "../../src/hooks/useDiary";
@@ -34,11 +35,13 @@ const MODE_OPTIONS: { value: Mode; label: string }[] = [
 
 export default function AddDiaryScreen() {
   const router = useRouter();
-  const date = todayISO();
+
+  // Pasto e data preselezionati dalla MealCard del Diario (la data fa sì che la
+  // voce finisca sul giorno che stai guardando, non sempre su oggi).
+  const params = useLocalSearchParams<{ meal?: string; date?: string }>();
+  const date = params.date && /^\d{4}-\d{2}-\d{2}$/.test(params.date) ? params.date : todayISO();
   const add = useAddDiaryEntry(date);
 
-  // Pasto preselezionato se aperto dal bottone "Aggiungi" di una MealCard.
-  const params = useLocalSearchParams<{ meal?: string }>();
   const initialMeal: MealName =
     params.meal && params.meal in MEAL_LABELS ? (params.meal as MealName) : "lunch";
   const [meal, setMeal] = useState<MealName>(initialMeal);
@@ -91,6 +94,16 @@ export default function AddDiaryScreen() {
     <View style={styles.screen}>
       <ScreenHeader title="Aggiungi al diario" />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        {/* Scorciatoia: fotografa il pasto invece di inserirlo a mano. */}
+        <Pressable
+          style={styles.scanBtn}
+          onPress={() => router.push(`/analyze?meal=${meal}&date=${date}`)}
+        >
+          <Icon name="scan" size={20} color={colors.primary} />
+          <Text style={styles.scanText}>Scansiona pasto con la fotocamera</Text>
+          <Icon name="chevron" size={18} color={colors.textMuted} />
+        </Pressable>
+
         <Label text="Pasto" />
         <SegmentedControl options={MEAL_OPTIONS} value={meal} onChange={setMeal} />
 
@@ -153,7 +166,7 @@ export default function AddDiaryScreen() {
 
         <Pressable onPress={onSubmit} disabled={add.isPending} style={[styles.saveBtn, add.isPending && styles.disabled]}>
           {add.isPending ? (
-            <ActivityIndicator color="#06210f" />
+            <ActivityIndicator color={colors.onPrimary} />
           ) : (
             <Text style={styles.saveText}>Aggiungi</Text>
           )}
@@ -234,13 +247,26 @@ const styles = StyleSheet.create({
   pickTextActive: { fontWeight: "700", color: colors.protein },
   empty: { color: colors.textMuted, fontSize: 13 },
   saveBtn: {
-    backgroundColor: colors.calories,
+    backgroundColor: colors.primary,
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: "center",
     marginTop: 8,
   },
   disabled: { opacity: 0.5 },
-  saveText: { color: "#06210f", fontSize: 16, fontWeight: "800" },
+  saveText: { color: colors.onPrimary, fontSize: 16, fontWeight: "800" },
   error: { color: colors.fat, fontSize: 13 },
+
+  scanBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  scanText: { flex: 1, color: colors.text, fontSize: 15, fontWeight: "700" },
 });

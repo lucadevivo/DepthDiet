@@ -10,6 +10,7 @@ import { MEAL_LABELS, type MealName } from "../../src/types/nutrition";
 import { ProgressBar } from "../../src/components/ProgressBar";
 import { MacroProgressColumn } from "../../src/components/MacroProgressColumn";
 import { MealCard } from "../../src/components/MealCard";
+import { Icon } from "../../src/components/Icon";
 
 const MEAL_ORDER: MealName[] = ["breakfast", "lunch", "dinner", "snack"];
 
@@ -41,13 +42,13 @@ export default function DiaryScreen() {
       {/* Header dark con selettore giorno */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Pressable onPress={() => setDate(shiftISO(date, -1))} hitSlop={12} style={styles.navBtn}>
-          <Text style={styles.navText}>‹</Text>
+          <Icon name="back" size={26} color={colors.textMuted} />
         </Pressable>
         <Pressable onPress={() => setDate(todayISO())} hitSlop={8}>
           <Text style={styles.dayLabel}>{formatDayLabel(date)}</Text>
         </Pressable>
         <Pressable onPress={() => setDate(shiftISO(date, 1))} hitSlop={12} style={styles.navBtn}>
-          <Text style={styles.navText}>›</Text>
+          <Icon name="forward" size={26} color={colors.textMuted} />
         </Pressable>
       </View>
 
@@ -96,11 +97,6 @@ export default function DiaryScreen() {
           </View>
         </View>
 
-        {/* Azione primaria */}
-        <Pressable style={styles.scanBtn} onPress={() => router.push("/analyze")}>
-          <Text style={styles.scanText}>📷  Scansiona pasto</Text>
-        </Pressable>
-
         {diary.isLoading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: 16 }} />
         ) : (
@@ -109,7 +105,7 @@ export default function DiaryScreen() {
               key={meal}
               title={MEAL_LABELS[meal]}
               entries={entries.filter((e) => e.meal === meal)}
-              onAdd={() => router.push(`/diary/add?meal=${meal}`)}
+              onAdd={() => router.push(`/diary/add?meal=${meal}&date=${date}`)}
               onDelete={(id) => del.mutate(id)}
             />
           ))
@@ -117,11 +113,17 @@ export default function DiaryScreen() {
 
         {/* Gestione */}
         <View style={styles.links}>
-          <Link href="/foods" style={styles.link}>
-            🍎 Alimenti
+          <Link href="/foods" style={styles.link} asChild>
+            <Pressable style={styles.linkPill}>
+              <Icon name="food" size={18} color={colors.textMuted} />
+              <Text style={styles.linkText}>Alimenti</Text>
+            </Pressable>
           </Link>
-          <Link href="/recipes" style={styles.link}>
-            📖 Ricette
+          <Link href="/recipes" style={styles.link} asChild>
+            <Pressable style={styles.linkPill}>
+              <Icon name="recipe" size={18} color={colors.textMuted} />
+              <Text style={styles.linkText}>Ricette</Text>
+            </Pressable>
           </Link>
         </View>
       </ScrollView>
@@ -142,7 +144,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
   },
   navBtn: { width: 32, alignItems: "center" },
-  navText: { color: colors.text, fontSize: 30, lineHeight: 32, fontWeight: "400" },
   dayLabel: { color: colors.text, fontSize: 20, fontWeight: "800", minWidth: 120, textAlign: "center" },
 
   content: { padding: 16, gap: 14 },
@@ -161,16 +162,20 @@ const styles = StyleSheet.create({
   kcalLeft: { color: colors.textMuted, fontSize: 12, textAlign: "center" },
   macroCols: { flexDirection: "row", gap: 12, marginTop: 6 },
 
-  scanBtn: {
-    backgroundColor: colors.primary,
-    borderRadius: 14,
-    paddingVertical: 15,
+  links: { flexDirection: "row", justifyContent: "center", gap: 12, paddingTop: 8 },
+  link: { flex: 1 },
+  linkPill: {
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  scanText: { color: colors.onPrimary, fontSize: 16, fontWeight: "800" },
-
-  links: { flexDirection: "row", justifyContent: "center", gap: 28, paddingTop: 4 },
-  link: { color: colors.textMuted, fontSize: 15, fontWeight: "700" },
+  linkText: { color: colors.textMuted, fontSize: 15, fontWeight: "700" },
 
   error: { color: colors.primary, fontSize: 13, textAlign: "center" },
 });

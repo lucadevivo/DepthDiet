@@ -8,10 +8,11 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { ScreenHeader } from "../src/components/ScreenHeader";
 import { NumberField } from "../src/components/NumberField";
 import { SegmentedControl } from "../src/components/SegmentedControl";
+import { Icon } from "../src/components/Icon";
 import { colors } from "../src/theme/colors";
 import { todayISO } from "../src/lib/date";
 import { useAnalyzeMeal } from "../src/hooks/useAnalyzeMeal";
@@ -114,10 +115,15 @@ function toEditItems(result: AnalyzeResult): EditItem[] {
 
 export default function AnalyzeScreen() {
   const router = useRouter();
-  const date = todayISO();
+
+  // Pasto e data ereditati dal Diario (così lo scan finisce sul giorno giusto).
+  const params = useLocalSearchParams<{ meal?: string; date?: string }>();
+  const date = params.date && /^\d{4}-\d{2}-\d{2}$/.test(params.date) ? params.date : todayISO();
+  const initialMeal: MealName =
+    params.meal && params.meal in MEAL_LABELS ? (params.meal as MealName) : "lunch";
 
   const [phase, setPhase] = useState<Phase>("pick");
-  const [meal, setMeal] = useState<MealName>("lunch");
+  const [meal, setMeal] = useState<MealName>(initialMeal);
   const [contextText, setContextText] = useState("");
   const [reference, setReference] = useState<RefChoice>("none");
   const [items, setItems] = useState<EditItem[]>([]);
@@ -145,7 +151,7 @@ export default function AnalyzeScreen() {
         const cap = await captureMealWithLidar();
         const depth =
           cap.quality !== "none" ? { volumeMl: cap.volumeMl, quality: cap.quality } : undefined;
-        if (depth) hints.push(`📐 volume ~${Math.round(cap.volumeMl)} ml · ${QUALITY_HINT[depth.quality]}`);
+        if (depth) hints.push(`volume ~${Math.round(cap.volumeMl)} ml · ${QUALITY_HINT[depth.quality]}`);
         body = {
           imageBase64: cap.imageBase64,
           mimeType: cap.mimeType,
@@ -271,7 +277,8 @@ export default function AnalyzeScreen() {
                 style={styles.primaryBtn}
                 onPress={() => startAnalysis(lidarOn ? "lidar" : "camera")}
               >
-                <Text style={styles.primaryText}>📷  Scatta foto</Text>
+                <Icon name="camera" size={20} color={colors.onPrimary} />
+                <Text style={styles.primaryText}>Scatta foto</Text>
               </Pressable>
               {lidarOn ? (
                 <Text style={styles.hintSmall}>
@@ -279,7 +286,8 @@ export default function AnalyzeScreen() {
                 </Text>
               ) : null}
               <Pressable style={styles.secondaryBtn} onPress={() => startAnalysis("library")}>
-                <Text style={styles.secondaryText}>🖼️  Scegli dalla galleria</Text>
+                <Icon name="gallery" size={18} color={colors.text} />
+                <Text style={styles.secondaryText}>Scegli dalla galleria</Text>
               </Pressable>
             </View>
           )}
@@ -314,7 +322,12 @@ export default function AnalyzeScreen() {
           Controlla gli abbinamenti e le quantità, poi aggiungi al diario ({MEAL_LABELS[meal]}).
         </Text>
         {usedHint ? <Text style={styles.hint}>{usedHint}</Text> : null}
-        {notes ? <Text style={styles.notes}>💡 {notes}</Text> : null}
+        {notes ? (
+          <View style={styles.notesRow}>
+            <Icon name="bulb" size={16} color={colors.textMuted} />
+            <Text style={styles.notes}>{notes}</Text>
+          </View>
+        ) : null}
 
         {items.map((it) => {
           const m = scaled(it);
@@ -325,7 +338,7 @@ export default function AnalyzeScreen() {
                   onPress={() => patch(it.key, { included: !it.included })}
                   style={[styles.check, it.included && styles.checkOn]}
                 >
-                  <Text style={styles.checkMark}>{it.included ? "✓" : ""}</Text>
+                  {it.included ? <Icon name="check" size={16} color={colors.onPrimary} /> : null}
                 </Pressable>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.name}>{it.name}</Text>
@@ -362,7 +375,12 @@ export default function AnalyzeScreen() {
                   {savingKey === it.key ? (
                     <ActivityIndicator color={colors.water} />
                   ) : (
-                    <Text style={styles.linkText}>＋ Salva come Alimento (così la prossima volta lo abbina)</Text>
+                    <View style={styles.linkRow}>
+                      <Icon name="add" size={16} color={colors.water} />
+                      <Text style={styles.linkText}>
+                        Salva come Alimento (così la prossima volta lo abbina)
+                      </Text>
+                    </View>
                   )}
                 </Pressable>
               ) : null}
@@ -384,13 +402,14 @@ export default function AnalyzeScreen() {
           onPress={confirmToDiary}
         >
           {addEntry.isPending ? (
-            <ActivityIndicator color="#06210f" />
+            <ActivityIndicator color={colors.onPrimary} />
           ) : (
             <Text style={styles.primaryText}>Aggiungi al diario</Text>
           )}
         </Pressable>
         <Pressable style={styles.secondaryBtn} onPress={() => setPhase("pick")}>
-          <Text style={styles.secondaryText}>← Rifai la foto</Text>
+          <Icon name="back" size={18} color={colors.text} />
+          <Text style={styles.secondaryText}>Rifai la foto</Text>
         </Pressable>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -418,17 +437,23 @@ const styles = StyleSheet.create({
   busy: { alignItems: "center", gap: 8, paddingVertical: 24 },
   busyText: { color: colors.textMuted, fontSize: 14 },
   primaryBtn: {
-    backgroundColor: colors.calories,
+    flexDirection: "row",
+    gap: 8,
+    backgroundColor: colors.primary,
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: "center",
+    justifyContent: "center",
   },
-  primaryText: { color: "#06210f", fontSize: 16, fontWeight: "800" },
+  primaryText: { color: colors.onPrimary, fontSize: 16, fontWeight: "800" },
   secondaryBtn: {
+    flexDirection: "row",
+    gap: 8,
     backgroundColor: colors.surfaceAlt,
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -445,7 +470,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     overflow: "hidden",
   },
-  notes: { color: colors.textMuted, fontSize: 13, fontStyle: "italic" },
+  notesRow: { flexDirection: "row", alignItems: "flex-start", gap: 6 },
+  notes: { color: colors.textMuted, fontSize: 13, fontStyle: "italic", flex: 1 },
   card: {
     backgroundColor: colors.surface,
     borderRadius: 14,
@@ -465,15 +491,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  checkOn: { backgroundColor: colors.calories, borderColor: colors.calories },
-  checkMark: { color: "#06210f", fontWeight: "900", fontSize: 16 },
+  checkOn: { backgroundColor: colors.primary, borderColor: colors.primary },
   name: { color: colors.text, fontSize: 16, fontWeight: "700" },
   matched: { color: colors.protein, fontSize: 12, fontWeight: "700", marginTop: 2 },
   estimated: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
   cardBody: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
   macros: { color: colors.textMuted, fontSize: 13, flexShrink: 1, textAlign: "right" },
   linkBtn: { paddingTop: 4 },
-  linkText: { color: colors.water, fontSize: 13, fontWeight: "700" },
+  linkRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  linkText: { color: colors.water, fontSize: 13, fontWeight: "700", flex: 1 },
   totalCard: {
     backgroundColor: colors.surfaceAlt,
     borderRadius: 14,

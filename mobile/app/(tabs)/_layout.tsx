@@ -1,10 +1,11 @@
 import { Tabs } from "expo-router";
-import { Text, type ColorValue } from "react-native";
+import type { ColorValue } from "react-native";
 import { colors } from "../../src/theme/colors";
+import { Icon, type IconName } from "../../src/components/Icon";
 
-/** Icona tab leggera via emoji (niente dipendenza icon esterna). */
-function TabIcon({ emoji, color, size }: { emoji: string; color: ColorValue; size: number }) {
-  return <Text style={{ fontSize: size - 2, color }}>{emoji}</Text>;
+/** Icona della tab bar: usa il set Icon col colore (attivo/inattivo) di expo-router. */
+function TabBarIcon({ name, color, size }: { name: IconName; color: ColorValue; size: number }) {
+  return <Icon name={name} color={color} size={size} />;
 }
 
 /**
@@ -30,28 +31,28 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: "Oggi",
-          tabBarIcon: ({ color, size }) => <TabIcon emoji="📊" color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => <TabBarIcon name="today" color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="diary"
         options={{
           title: "Diario",
-          tabBarIcon: ({ color, size }) => <TabIcon emoji="📒" color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => <TabBarIcon name="diary" color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="history"
         options={{
           title: "Storico",
-          tabBarIcon: ({ color, size }) => <TabIcon emoji="🗓️" color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => <TabBarIcon name="history" color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: "Profilo",
-          tabBarIcon: ({ color, size }) => <TabIcon emoji="⚙️" color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => <TabBarIcon name="profile" color={color} size={size} />,
         }}
       />
     </Tabs>
