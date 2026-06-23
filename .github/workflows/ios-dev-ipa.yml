@@ -10,12 +10,23 @@ on:
 
 jobs:
   build:
-    runs-on: macos-15
+    # RN 0.85 / Expo 56 (xcframework precompilati) richiede Swift 6.2 -> Xcode 26.
+    runs-on: macos-26
     defaults:
       run:
         working-directory: mobile
     steps:
       - uses: actions/checkout@v4
+
+      - name: Seleziona l'Xcode più recente (serve Swift 6.2)
+        run: |
+          set -eo pipefail
+          ls -d /Applications/Xcode*.app
+          LATEST=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          echo "Uso $LATEST"
+          sudo xcode-select -s "$LATEST/Contents/Developer"
+          xcodebuild -version
+          swift --version
 
       - uses: actions/setup-node@v4
         with:
@@ -38,13 +49,9 @@ jobs:
           echo "Workspace trovato: [$WORKSPACE]"
           echo "--- xcodebuild -list ---"
           xcodebuild -list -workspace "$WORKSPACE" || true
-          # Scheme dell'app: il primo diverso da "Pods", via output JSON.
-          SCHEME=$(xcodebuild -list -json -workspace "$WORKSPACE" \
-            | python3 -c "import json,sys; s=json.load(sys.stdin).get('workspace',{}).get('schemes',[]); print(next((x for x in s if x!='Pods'), s[0] if s else ''))")
-          # Fallback: nome del workspace senza estensione.
-          if [ -z "$SCHEME" ]; then
-            SCHEME=$(basename "$WORKSPACE" .xcworkspace)
-          fi
+          # Lo scheme dell'app generato da Expo prebuild == nome del progetto
+          # (= basename del workspace). Gli scheme dei Pod NON vanno usati.
+          SCHEME=$(basename "$WORKSPACE" .xcworkspace)
           echo "Scheme scelto: [$SCHEME]"
           echo "workspace=$WORKSPACE" >> "$GITHUB_OUTPUT"
           echo "scheme=$SCHEME" >> "$GITHUB_OUTPUT"
