@@ -45,7 +45,7 @@ jobs:
 
       - name: Build Debug per device, senza firma
         run: |
-          set -eo pipefail
+          set -o pipefail
           xcodebuild \
             -workspace "${{ steps.xc.outputs.workspace }}" \
             -scheme "${{ steps.xc.outputs.scheme }}" \
@@ -57,8 +57,21 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             PROVISIONING_PROFILE_SPECIFIER="" \
+            CODE_SIGNING_REQUIRED=NO \
+            DEVELOPMENT_TEAM="" \
             ENABLE_BITCODE=NO \
-            build
+            build 2>&1 | tee xcodebuild.log
+
+      - name: Carica i log (anche se fallisce)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: |
+            mobile/xcodebuild.log
+            mobile/ios/Podfile
+            mobile/ios/Podfile.lock
+          if-no-files-found: warn
 
       - name: Impacchetta in .ipa
         run: |
