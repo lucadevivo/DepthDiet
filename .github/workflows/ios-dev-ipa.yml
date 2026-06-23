@@ -25,7 +25,7 @@ jobs:
         run: npm install --legacy-peer-deps
 
       - name: Expo prebuild (genera progetto iOS + pods)
-        run: npx expo prebuild --platform ios --no-install=false
+        run: npx expo prebuild --platform ios
         env:
           # Niente segreti nel guscio nativo: il JS arriva da Metro.
           CI: "1"
