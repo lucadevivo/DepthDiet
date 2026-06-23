@@ -1,0 +1,80 @@
+name: iOS dev-client IPA (unsigned)
+
+# Costruisce un IPA dev-client NON firmato su runner macOS gratuito.
+# L'IPA si installa sull'iPhone con SideStore (ri-firma con Apple ID free);
+# il JS viene caricato da Metro sul PC via LAN. Rebuild solo quando cambiano
+# i moduli nativi. Trigger manuale dalla tab Actions di GitHub.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install JS deps
+        run: npm install --legacy-peer-deps
+
+      - name: Expo prebuild (genera progetto iOS + pods)
+        run: npx expo prebuild --platform ios --no-install=false
+        env:
+          # Niente segreti nel guscio nativo: il JS arriva da Metro.
+          CI: "1"
+
+      - name: Individua workspace e scheme
+        id: xc
+        run: |
+          WORKSPACE=$(ls ios/*.xcworkspace -d | head -1)
+          echo "workspace=$WORKSPACE" >> "$GITHUB_OUTPUT"
+          echo "Workspace: $WORKSPACE"
+          echo "--- schemi disponibili ---"
+          xcodebuild -list -workspace "$WORKSPACE" || true
+          SCHEME=$(xcodebuild -list -workspace "$WORKSPACE" 2>/dev/null \
+            | awk '/Schemes:/{f=1;next} f&&NF{gsub(/^ +/,"");print;exit}')
+          echo "scheme=$SCHEME" >> "$GITHUB_OUTPUT"
+          echo "Scheme scelto: $SCHEME"
+
+      - name: Build Debug per device, senza firma
+        run: |
+          set -eo pipefail
+          xcodebuild \
+            -workspace "${{ steps.xc.outputs.workspace }}" \
+            -scheme "${{ steps.xc.outputs.scheme }}" \
+            -configuration Debug \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            PROVISIONING_PROFILE_SPECIFIER="" \
+            ENABLE_BITCODE=NO \
+            build
+
+      - name: Impacchetta in .ipa
+        run: |
+          set -eo pipefail
+          APP=$(ls -d build/Build/Products/Debug-iphoneos/*.app | head -1)
+          echo "App: $APP"
+          rm -rf Payload && mkdir Payload
+          cp -R "$APP" Payload/
+          ipa_name="food-tracker-devclient.ipa"
+          zip -ry "$ipa_name" Payload >/dev/null
+          echo "Creato $ipa_name"
+          ls -lh "$ipa_name"
+
+      - name: Carica l'IPA come artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: food-tracker-devclient-ipa
+          path: mobile/food-tracker-devclient.ipa
+          if-no-files-found: error

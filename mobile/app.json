@@ -1,0 +1,45 @@
+{
+  "expo": {
+    "name": "Food Tracker",
+    "slug": "food-tracker",
+    "scheme": "foodtracker",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "app.webluca.foodtracker"
+    },
+    "android": {
+      "package": "app.webluca.foodtracker",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "L'app usa la fotocamera per scansionare i codici a barre dei prodotti e fotografare i pasti."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "L'app accede alle foto per analizzare un pasto dalla tua galleria.",
+          "cameraPermission": "L'app usa la fotocamera per fotografare i pasti da analizzare."
+        }
+      ]
+    ]
+  }
+}

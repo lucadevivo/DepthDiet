@@ -1,0 +1,20 @@
+# Dipendenze e build (ogni sottoprogetto ha anche il suo .gitignore)
+node_modules/
+dist/
+.expo/
+web-build/
+
+# Segreti / ambiente
+.env
+.env.*
+!.env.example
+
+# Dati e backup del DB (Fase 1b)
+data/
+backups/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# OS / editor
+.DS_Store

@@ -1,0 +1,16 @@
+# systemd service (oneshot) per il backup del DB.
+# Copia in /etc/systemd/system/ (o ~/.config/systemd/user/ per unit utente)
+# e adatta WorkingDirectory/User al tuo home server.
+#
+#   systemctl --user enable --now food-tracker-backup.timer
+#
+[Unit]
+Description=Backup DB food-tracker (VACUUM INTO + retention)
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/luca/apps/food-tracker/server
+# In produzione si gira il JS compilato (niente tsx): node dist/scripts/backup.js
+ExecStart=/usr/bin/node dist/scripts/backup.js
+# Carica le stesse env del server (DATABASE_PATH, BACKUP_DIR, BACKUP_RETENTION).
+EnvironmentFile=/home/luca/apps/food-tracker/server/.env

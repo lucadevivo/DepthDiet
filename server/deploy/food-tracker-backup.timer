@@ -1,0 +1,14 @@
+# systemd timer: lancia il backup ogni giorno alle 03:00 (con recupero se il
+# server era spento). Abbinato a food-tracker-backup.service.
+[Unit]
+Description=Backup giornaliero DB food-tracker
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+
+# --- Alternativa con cron (crontab -e) invece di systemd ---
+# 0 3 * * *  cd /home/luca/apps/food-tracker/server && /usr/bin/node dist/scripts/backup.js >> backups/backup.log 2>&1

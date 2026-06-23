@@ -1,0 +1,96 @@
+import { getDb } from "../db/connection.js";
+import { sumMacros, type Macros } from "../services/nutrition.js";
+
+export type Meal = "breakfast" | "lunch" | "dinner" | "snack";
+export type DiarySource = "manual" | "custom_food" | "recipe" | "scan" | "off";
+
+export interface DiaryEntry {
+  id: number;
+  entry_date: string;
+  meal: Meal;
+  source: DiarySource;
+  custom_food_id: number | null;
+  recipe_id: number | null;
+  description: string | null;
+  grams: number | null;
+  kcal: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  created_at: string;
+}
+
+export interface DiaryDay {
+  date: string;
+  entries: DiaryEntry[];
+  totals: Macros;
+}
+
+export interface NewDiaryEntry {
+  entry_date: string;
+  meal: Meal;
+  source: DiarySource;
+  custom_food_id: number | null;
+  recipe_id: number | null;
+  description: string | null;
+  grams: number | null;
+  /** Snapshot dei macro al momento del log (vedi schema: lo storico resta corretto). */
+  macros: Macros;
+}
+
+export function getDiaryByDate(date: string): DiaryDay {
+  const entries = getDb()
+    .prepare(
+      `SELECT id, entry_date, meal, source, custom_food_id, recipe_id, description, grams,
+              kcal, protein_g, carbs_g, fat_g, created_at
+         FROM diary_entries
+        WHERE entry_date = ?
+        ORDER BY created_at`,
+    )
+    .all(date) as unknown as DiaryEntry[];
+
+  const totals = sumMacros(
+    entries.map((e) => ({
+      kcal: e.kcal,
+      protein_g: e.protein_g,
+      carbs_g: e.carbs_g,
+      fat_g: e.fat_g,
+    })),
+  );
+  return { date, entries, totals };
+}
+
+export function addDiaryEntry(e: NewDiaryEntry): DiaryEntry {
+  const info = getDb()
+    .prepare(
+      `INSERT INTO diary_entries
+         (entry_date, meal, source, custom_food_id, recipe_id, description, grams,
+          kcal, protein_g, carbs_g, fat_g)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      e.entry_date,
+      e.meal,
+      e.source,
+      e.custom_food_id,
+      e.recipe_id,
+      e.description,
+      e.grams,
+      e.macros.kcal,
+      e.macros.protein_g,
+      e.macros.carbs_g,
+      e.macros.fat_g,
+    );
+  return getDb()
+    .prepare(
+      `SELECT id, entry_date, meal, source, custom_food_id, recipe_id, description, grams,
+              kcal, protein_g, carbs_g, fat_g, created_at
+         FROM diary_entries WHERE id = ?`,
+    )
+    .get(Number(info.lastInsertRowid)) as unknown as DiaryEntry;
+}
+
+export function deleteDiaryEntry(id: number): boolean {
+  const info = getDb().prepare("DELETE FROM diary_entries WHERE id = ?").run(id);
+  return info.changes > 0;
+}
