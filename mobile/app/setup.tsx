@@ -9,13 +9,15 @@ import {
   StyleSheet,
 } from "react-native";
 import { ScreenHeader } from "../src/components/ScreenHeader";
-import { colors } from "../src/theme/colors";
+import { useTheme, useThemed } from "../src/theme/ThemeProvider";
+import type { ThemeColors } from "../src/theme/colors";
 import { apiFetch } from "../src/api/client";
 import { SECRET_KEYS, getSecret, setSecret, deleteSecret } from "../src/lib/secureStore";
 
 type TestState = "idle" | "testing" | "ok" | "fail";
 
 export default function SetupScreen() {
+  const { colors, styles } = useThemed(makeStyles);
   const [bearer, setBearer] = useState("");
   const [cfId, setCfId] = useState("");
   const [cfSecret, setCfSecret] = useState("");
@@ -147,7 +149,8 @@ export default function SetupScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { padding: 16, gap: 10, paddingBottom: 60 },
   lead: { color: colors.textMuted, fontSize: 14, lineHeight: 20 },

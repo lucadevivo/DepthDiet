@@ -1,5 +1,6 @@
 import { View, Text, Pressable, StyleSheet } from "react-native";
-import { colors } from "../theme/colors";
+import { useTheme, useThemed } from "../theme/ThemeProvider";
+import type { ThemeColors } from "../theme/colors";
 
 interface Option<T extends string> {
   value: T;
@@ -14,6 +15,7 @@ interface Props<T extends string> {
 
 /** Selettore segmentato generico (sesso, obiettivo, ...). */
 export function SegmentedControl<T extends string>({ options, value, onChange }: Props<T>) {
+  const { colors, styles } = useThemed(makeStyles);
   return (
     <View style={styles.row}>
       {options.map((opt) => {
@@ -32,7 +34,8 @@ export function SegmentedControl<T extends string>({ options, value, onChange }:
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   row: {
     flexDirection: "row",
     backgroundColor: colors.surfaceAlt,

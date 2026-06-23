@@ -1,5 +1,6 @@
 import { View, Text, TextInput, StyleSheet } from "react-native";
-import { colors } from "../theme/colors";
+import { useTheme, useThemed } from "../theme/ThemeProvider";
+import type { ThemeColors } from "../theme/colors";
 
 interface Props {
   label: string;
@@ -11,6 +12,7 @@ interface Props {
 
 /** Campo numerico etichettato (peso, altezza, età, grammi...). */
 export function NumberField({ label, value, onChangeText, unit, placeholder }: Props) {
+  const { colors, styles } = useThemed(makeStyles);
   return (
     <View style={styles.container}>
       <Text style={styles.label}>{label}</Text>
@@ -30,7 +32,8 @@ export function NumberField({ label, value, onChangeText, unit, placeholder }: P
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   container: { flex: 1, gap: 6 },
   label: { color: colors.textMuted, fontSize: 13, fontWeight: "600" },
   inputRow: {

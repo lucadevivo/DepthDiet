@@ -12,11 +12,13 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "expo-router";
 import { ScreenHeader } from "../src/components/ScreenHeader";
 import { OffProductRow } from "../src/components/OffProductRow";
-import { colors } from "../src/theme/colors";
+import { useTheme, useThemed } from "../src/theme/ThemeProvider";
+import type { ThemeColors } from "../src/theme/colors";
 import { searchOff } from "../src/api/off";
 import { useImportOff } from "../src/hooks/useImportOff";
 
 export default function OffSearchScreen() {
+  const { colors, styles } = useThemed(makeStyles);
   const [term, setTerm] = useState("");
   const [submitted, setSubmitted] = useState("");
   const { importProduct, statusOf } = useImportOff();
@@ -81,7 +83,8 @@ export default function OffSearchScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   searchBar: { flexDirection: "row", gap: 8, paddingHorizontal: 16, paddingBottom: 8 },
   input: {

@@ -10,7 +10,8 @@ import {
 import { ScreenHeader } from "../src/components/ScreenHeader";
 import { NumberField } from "../src/components/NumberField";
 import { Sparkline } from "../src/components/Sparkline";
-import { colors } from "../src/theme/colors";
+import { useTheme, useThemed } from "../src/theme/ThemeProvider";
+import type { ThemeColors } from "../src/theme/colors";
 import { todayISO } from "../src/lib/date";
 import {
   useAdaptiveQuery,
@@ -21,6 +22,7 @@ import {
 } from "../src/hooks/useWeight";
 
 export default function WeightScreen() {
+  const { colors, styles } = useThemed(makeStyles);
   const weights = useWeightsQuery();
   const adaptive = useAdaptiveQuery();
   const logWeight = useLogWeight();
@@ -117,6 +119,7 @@ function AdaptiveCard({
   applying: boolean;
   applied: number | null;
 }) {
+  const { colors, styles } = useThemed(makeStyles);
   return (
     <View style={[styles.card, styles.adaptiveCard]}>
       <Text style={styles.cardTitle}>TDEE adattivo</Text>
@@ -152,6 +155,7 @@ function AdaptiveCard({
 }
 
 function Trend({ label, value }: { label: string; value: string }) {
+  const { colors, styles } = useThemed(makeStyles);
   return (
     <View style={styles.trendBox}>
       <Text style={styles.trendValue}>{value}</Text>
@@ -160,7 +164,8 @@ function Trend({ label, value }: { label: string; value: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { padding: 16, gap: 14, paddingBottom: 48 },
   card: {

@@ -1,10 +1,12 @@
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { colors } from "../theme/colors";
+import { useTheme, useThemed } from "../theme/ThemeProvider";
+import type { ThemeColors } from "../theme/colors";
 
 /** Header con freccia indietro per le schermate fuori dalle tab (stack). */
 export function ScreenHeader({ title }: { title: string }) {
+  const { colors, styles } = useThemed(makeStyles);
   const insets = useSafeAreaInsets();
   const router = useRouter();
   return (
@@ -17,7 +19,8 @@ export function ScreenHeader({ title }: { title: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",

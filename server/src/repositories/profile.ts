@@ -1,5 +1,5 @@
 import { getDb } from "../db/connection.js";
-import type { ActivityLevel, DietPreset, Goal, Sex } from "../services/tdee.js";
+import type { ActivityLevel, DietPreset, Formula, Goal, Sex } from "../services/tdee.js";
 
 /** La riga (singola) di user_profile. I campi sono null finché non si calcola il profilo. */
 export interface Profile {
@@ -14,6 +14,8 @@ export interface Profile {
   diet_carbs_pct: number | null;
   diet_protein_pct: number | null;
   diet_fat_pct: number | null;
+  formula: Formula;
+  body_fat_pct: number | null;
   target_calories: number | null;
   target_protein_g: number | null;
   target_carbs_g: number | null;
@@ -39,6 +41,8 @@ export interface ProfileUpdate {
   diet_carbs_pct: number | null;
   diet_protein_pct: number | null;
   diet_fat_pct: number | null;
+  formula: Formula;
+  body_fat_pct: number | null;
   target_calories: number;
   target_protein_g: number;
   target_carbs_g: number;
@@ -93,13 +97,14 @@ export function updateProfileDiet(d: {
   return getProfile();
 }
 
-/** Salva parametri fisici + preset + obiettivi calcolati nella riga singola. */
+/** Salva parametri fisici + preset + formula + obiettivi calcolati nella riga singola. */
 export function updateProfile(u: ProfileUpdate): Profile {
   getDb()
     .prepare(
       `UPDATE user_profile SET
          weight_kg = ?, height_cm = ?, age = ?, sex = ?, activity_level = ?, goal = ?,
          diet_preset = ?, diet_carbs_pct = ?, diet_protein_pct = ?, diet_fat_pct = ?,
+         formula = ?, body_fat_pct = ?,
          target_calories = ?, target_protein_g = ?, target_carbs_g = ?, target_fat_g = ?,
          updated_at = datetime('now')
        WHERE id = 1`,
@@ -115,10 +120,40 @@ export function updateProfile(u: ProfileUpdate): Profile {
       u.diet_carbs_pct,
       u.diet_protein_pct,
       u.diet_fat_pct,
+      u.formula,
+      u.body_fat_pct,
       u.target_calories,
       u.target_protein_g,
       u.target_carbs_g,
       u.target_fat_g,
+    );
+  return getProfile();
+}
+
+/** Aggiorna SOLO formula + body fat + obiettivi ricalcolati (usato dal tab Settings). */
+export function updateProfileFormula(d: {
+  formula: Formula;
+  body_fat_pct: number | null;
+  target_calories: number;
+  target_protein_g: number;
+  target_carbs_g: number;
+  target_fat_g: number;
+}): Profile {
+  getDb()
+    .prepare(
+      `UPDATE user_profile SET
+         formula = ?, body_fat_pct = ?,
+         target_calories = ?, target_protein_g = ?, target_carbs_g = ?, target_fat_g = ?,
+         updated_at = datetime('now')
+       WHERE id = 1`,
+    )
+    .run(
+      d.formula,
+      d.body_fat_pct,
+      d.target_calories,
+      d.target_protein_g,
+      d.target_carbs_g,
+      d.target_fat_g,
     );
   return getProfile();
 }

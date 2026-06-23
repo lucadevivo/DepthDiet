@@ -1,5 +1,6 @@
 import { View, Text, Pressable, ActivityIndicator, StyleSheet } from "react-native";
-import { colors } from "../theme/colors";
+import { useTheme, useThemed } from "../theme/ThemeProvider";
+import type { ThemeColors } from "../theme/colors";
 import type { OffProduct } from "../types/food";
 
 export type ImportStatus = "idle" | "pending" | "done" | "duplicate" | "error";
@@ -12,6 +13,7 @@ interface Props {
 
 /** Riga prodotto Open Food Facts con pulsante "Importa" come Alimento Personale. */
 export function OffProductRow({ product, status, onImport }: Props) {
+  const { colors, styles } = useThemed(makeStyles);
   return (
     <View style={styles.row}>
       <View style={{ flex: 1 }}>
@@ -30,6 +32,7 @@ export function OffProductRow({ product, status, onImport }: Props) {
 }
 
 function ImportButton({ status, onPress }: { status: ImportStatus; onPress: () => void }) {
+  const { colors, styles } = useThemed(makeStyles);
   if (status === "pending") return <ActivityIndicator color={colors.protein} />;
   if (status === "done") return <Text style={[styles.tag, { color: colors.calories }]}>✓ Importato</Text>;
   if (status === "duplicate") return <Text style={[styles.tag, { color: colors.textMuted }]}>Già presente</Text>;
@@ -40,7 +43,8 @@ function ImportButton({ status, onPress }: { status: ImportStatus; onPress: () =
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",

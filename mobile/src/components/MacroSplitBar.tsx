@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet } from "react-native";
-import { colors } from "../theme/colors";
+import { useTheme, useThemed } from "../theme/ThemeProvider";
+import type { ThemeColors } from "../theme/colors";
 
 interface Props {
   protein_g: number;
@@ -15,6 +16,7 @@ const KCAL = { protein: 4, carbs: 4, fat: 9 } as const;
  * "ciambella" del riferimento, senza dipendenze grafiche native.
  */
 export function MacroSplitBar({ protein_g, carbs_g, fat_g }: Props) {
+  const { colors, styles } = useThemed(makeStyles);
   const kc = {
     carbs: carbs_g * KCAL.carbs,
     protein: protein_g * KCAL.protein,
@@ -60,7 +62,8 @@ export function MacroSplitBar({ protein_g, carbs_g, fat_g }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   bar: {
     flexDirection: "row",
     height: 16,

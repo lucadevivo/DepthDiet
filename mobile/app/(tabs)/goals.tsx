@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { ScrollView, View, Text, Pressable, ActivityIndicator, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors } from "../../src/theme/colors";
+import { useTheme, useThemed } from "../../src/theme/ThemeProvider";
+import type { ThemeColors } from "../../src/theme/colors";
 import { useProfileQuery, useUpdateDiet } from "../../src/hooks/useProfile";
 import { MacroSplitBar } from "../../src/components/MacroSplitBar";
 import { NumberField } from "../../src/components/NumberField";
@@ -22,6 +23,7 @@ function pctLabel(pct: MacroPercentages): string {
  * dieta, che ricalcola i macro sul backend e li mostra come barra a segmenti.
  */
 export default function GoalsScreen() {
+  const { colors, styles } = useThemed(makeStyles);
   const insets = useSafeAreaInsets();
   const profile = useProfileQuery();
   const updateDiet = useUpdateDiet();
@@ -141,6 +143,7 @@ function CustomEditor({
   pending: boolean;
   onApply: (pct: MacroPercentages) => void;
 }) {
+  const { colors, styles } = useThemed(makeStyles);
   const [open, setOpen] = useState(active);
   const [carbs, setCarbs] = useState(String(initial.carbs_pct));
   const [protein, setProtein] = useState(String(initial.protein_pct));
@@ -184,7 +187,8 @@ function CustomEditor({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { padding: 16, gap: 16, paddingBottom: 40 },
   heading: { color: colors.text, fontSize: 28, fontWeight: "800" },

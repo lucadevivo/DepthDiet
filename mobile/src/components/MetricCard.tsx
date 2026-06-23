@@ -1,5 +1,6 @@
 import { View, Text, Pressable, StyleSheet } from "react-native";
-import { colors } from "../theme/colors";
+import { useTheme, useThemed } from "../theme/ThemeProvider";
+import type { ThemeColors } from "../theme/colors";
 import { Icon, type IconName } from "./Icon";
 
 interface Props {
@@ -15,12 +16,14 @@ interface Props {
  * Riga-metrica in stile "Macros": tile con icona colorata, etichetta maiuscola
  * grigia, valore in evidenza e chevron. Usabile come bottone (con onPress).
  */
-export function MetricCard({ icon, iconColor = colors.primary, label, value, onPress, locked }: Props) {
+export function MetricCard({ icon, iconColor, label, value, onPress, locked }: Props) {
+  const { colors, styles } = useThemed(makeStyles);
+  const tint = iconColor ?? colors.primary;
   const Container: typeof Pressable | typeof View = onPress ? Pressable : View;
   return (
     <Container style={styles.card} {...(onPress ? { onPress } : {})}>
-      <View style={[styles.tile, { backgroundColor: iconColor + "22" }]}>
-        <Icon name={icon} size={22} color={iconColor} />
+      <View style={[styles.tile, { backgroundColor: tint + "22" }]}>
+        <Icon name={icon} size={22} color={tint} />
       </View>
       <View style={styles.body}>
         <Text style={styles.label}>{label}</Text>
@@ -35,7 +38,8 @@ export function MetricCard({ icon, iconColor = colors.primary, label, value, onP
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   card: {
     flexDirection: "row",
     alignItems: "center",

@@ -1,6 +1,6 @@
 import { Tabs } from "expo-router";
 import type { ColorValue } from "react-native";
-import { colors } from "../../src/theme/colors";
+import { useTheme } from "../../src/theme/ThemeProvider";
 import { Icon, type IconName } from "../../src/components/Icon";
 
 /** Icona della tab bar: usa il set Icon col colore (attivo/inattivo) di expo-router. */
@@ -13,6 +13,7 @@ function TabBarIcon({ name, color, size }: { name: IconName; color: ColorValue; 
  * in rosso. Niente header di sistema — ogni schermata disegna il proprio header.
  */
 export default function TabsLayout() {
+  const { colors } = useTheme();
   return (
     <Tabs
       screenOptions={{

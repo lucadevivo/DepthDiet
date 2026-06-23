@@ -1,5 +1,6 @@
 import { View, Text, Pressable, StyleSheet } from "react-native";
-import { colors } from "../theme/colors";
+import { useTheme, useThemed } from "../theme/ThemeProvider";
+import type { ThemeColors } from "../theme/colors";
 import { Icon } from "./Icon";
 
 interface Option<T extends string> {
@@ -19,6 +20,7 @@ interface Props<T extends string> {
  * con etichette lunghe (Goal a 5, Activity level) dove il segmented sarebbe stretto.
  */
 export function OptionList<T extends string>({ options, value, onChange }: Props<T>) {
+  const { colors, styles } = useThemed(makeStyles);
   return (
     <View style={{ gap: 8 }}>
       {options.map((opt) => {
@@ -41,7 +43,8 @@ export function OptionList<T extends string>({ options, value, onChange }: Props
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",

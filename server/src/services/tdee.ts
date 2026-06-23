@@ -18,6 +18,9 @@ export type Goal = "lose_weight" | "lose_slow" | "maintain" | "light_bulk" | "bu
 /** Preset di ripartizione dei macro (percentuali sulle calorie). 'custom' = libero. */
 export type DietPreset = "standard" | "balanced" | "low_fat" | "high_protein" | "keto" | "custom";
 
+/** Formula di calcolo del BMR. */
+export type Formula = "mifflin" | "harris_benedict" | "katch_mcardle";
+
 export const ACTIVITY_MULTIPLIERS: Record<ActivityLevel, number> = {
   sedentary: 1.2, // poco/nessun esercizio
   light: 1.375, // 1-3 giorni/sett
@@ -66,6 +69,10 @@ export interface TdeeInput {
   diet_preset: DietPreset;
   /** Percentuali custom (usate solo se diet_preset === 'custom'). */
   custom_pct?: MacroPercentages;
+  /** Formula BMR (default 'mifflin'). */
+  formula?: Formula;
+  /** % di grasso corporeo: serve solo per Katch-McArdle. */
+  body_fat_pct?: number | null;
 }
 
 export interface TdeeResult {
@@ -78,7 +85,33 @@ export interface TdeeResult {
   fat_g: number;
 }
 
-export function computeBmr(weightKg: number, heightCm: number, age: number, sex: Sex): number {
+/**
+ * BMR con la formula scelta. Mifflin-St Jeor di default. Katch-McArdle usa la
+ * massa magra (da body_fat_pct); se non disponibile, ripiega su Mifflin.
+ */
+export function computeBmr(
+  weightKg: number,
+  heightCm: number,
+  age: number,
+  sex: Sex,
+  formula: Formula = "mifflin",
+  bodyFatPct?: number,
+): number {
+  switch (formula) {
+    case "harris_benedict":
+      // Revisione 1984 di Roza & Shizgal.
+      return sex === "male"
+        ? 88.362 + 13.397 * weightKg + 4.799 * heightCm - 5.677 * age
+        : 447.593 + 9.247 * weightKg + 3.098 * heightCm - 4.33 * age;
+    case "katch_mcardle": {
+      if (bodyFatPct == null) break; // niente body fat → fallback Mifflin
+      const lbm = weightKg * (1 - bodyFatPct / 100);
+      return 370 + 21.6 * lbm;
+    }
+    default:
+      break;
+  }
+  // Mifflin-St Jeor (default e fallback).
   const base = 10 * weightKg + 6.25 * heightCm - 5 * age;
   return sex === "male" ? base + 5 : base - 161;
 }
@@ -105,7 +138,14 @@ export function macrosFromCalories(calories: number, pct: MacroPercentages): Mac
 }
 
 export function computeTargets(input: TdeeInput): TdeeResult {
-  const bmr = computeBmr(input.weight_kg, input.height_cm, input.age, input.sex);
+  const bmr = computeBmr(
+    input.weight_kg,
+    input.height_cm,
+    input.age,
+    input.sex,
+    input.formula ?? "mifflin",
+    input.body_fat_pct ?? undefined,
+  );
   const tdee = bmr * ACTIVITY_MULTIPLIERS[input.activity_level];
   const calories = tdee * GOAL_FACTORS[input.goal];
   const macros = macrosFromCalories(calories, resolvePercentages(input.diet_preset, input.custom_pct));

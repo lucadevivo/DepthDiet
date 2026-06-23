@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getProfile, updateDiet, updateProfile } from "../api/profile";
+import { getProfile, updateDiet, updateFormula, updateProfile } from "../api/profile";
 import type { PutDietResponse, PutProfileResponse } from "../types/profile";
 
 export const profileKey = ["profile"] as const;
@@ -27,6 +27,17 @@ export function useUpdateDiet() {
   return useMutation({
     mutationFn: updateDiet,
     onSuccess: (data: PutDietResponse) => {
+      qc.setQueryData(profileKey, data.profile);
+    },
+  });
+}
+
+/** Cambia la formula BMR → ricalcola obiettivi; aggiorna la cache del profilo. */
+export function useUpdateFormula() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: updateFormula,
+    onSuccess: (data: PutProfileResponse) => {
       qc.setQueryData(profileKey, data.profile);
     },
   });

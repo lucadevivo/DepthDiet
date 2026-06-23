@@ -4,6 +4,7 @@ export type Sex = "male" | "female";
 export type ActivityLevel = "sedentary" | "light" | "moderate" | "active" | "very_active";
 export type Goal = "lose_weight" | "lose_slow" | "maintain" | "light_bulk" | "bulk";
 export type DietPreset = "standard" | "balanced" | "low_fat" | "high_protein" | "keto" | "custom";
+export type Formula = "mifflin" | "harris_benedict" | "katch_mcardle";
 
 export interface MacroPercentages {
   carbs_pct: number;
@@ -23,6 +24,8 @@ export interface Profile {
   diet_carbs_pct: number | null;
   diet_protein_pct: number | null;
   diet_fat_pct: number | null;
+  formula: Formula;
+  body_fat_pct: number | null;
   target_calories: number | null;
   target_protein_g: number | null;
   target_carbs_g: number | null;
@@ -40,11 +43,18 @@ export interface ProfileInput {
   goal: Goal;
   diet_preset?: DietPreset;
   custom_pct?: MacroPercentages;
+  formula?: Formula;
+  body_fat_pct?: number | null;
 }
 
 export interface DietInput {
   diet_preset: DietPreset;
   custom_pct?: MacroPercentages;
+}
+
+export interface FormulaInput {
+  formula: Formula;
+  body_fat_pct?: number | null;
 }
 
 export interface PutProfileResponse {
@@ -55,6 +65,12 @@ export interface PutProfileResponse {
 export interface PutDietResponse {
   profile: Profile;
 }
+
+export const FORMULA_OPTIONS: { value: Formula; label: string; desc: string }[] = [
+  { value: "mifflin", label: "Mifflin-St Jeor", desc: "Default, accurate for most people" },
+  { value: "harris_benedict", label: "Harris-Benedict", desc: "Revised 1984 equation" },
+  { value: "katch_mcardle", label: "Katch-McArdle", desc: "Uses body fat % (lean mass)" },
+];
 
 // --- Etichette/opzioni per la UI (in inglese) ---
 

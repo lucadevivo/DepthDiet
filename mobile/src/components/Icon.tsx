@@ -1,6 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import type { ColorValue } from "react-native";
-import { colors } from "../theme/colors";
+import { useTheme, useThemed } from "../theme/ThemeProvider";
+import type { ThemeColors } from "../theme/colors";
 
 /**
  * Set di icone dell'app, mappate su Ionicons (font-based: nessun modulo nativo
@@ -51,6 +52,7 @@ interface Props {
   color?: ColorValue;
 }
 
-export function Icon({ name, size = 22, color = colors.text }: Props) {
-  return <Ionicons name={MAP[name]} size={size} color={color} />;
+export function Icon({ name, size = 22, color }: Props) {
+  const { colors } = useTheme();
+  return <Ionicons name={MAP[name]} size={size} color={color ?? colors.text} />;
 }

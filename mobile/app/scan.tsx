@@ -5,11 +5,13 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "expo-router";
 import { ScreenHeader } from "../src/components/ScreenHeader";
 import { OffProductRow } from "../src/components/OffProductRow";
-import { colors } from "../src/theme/colors";
+import { useTheme, useThemed } from "../src/theme/ThemeProvider";
+import type { ThemeColors } from "../src/theme/colors";
 import { lookupBarcode } from "../src/api/off";
 import { useImportOff } from "../src/hooks/useImportOff";
 
 export default function ScanScreen() {
+  const { colors, styles } = useThemed(makeStyles);
   const [permission, requestPermission] = useCameraPermissions();
   const [code, setCode] = useState<string | null>(null);
   const { importProduct, statusOf } = useImportOff();
@@ -89,7 +91,8 @@ export default function ScanScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, gap: 16 },
   cameraBox: {

@@ -1,5 +1,6 @@
 import { View, Text, Pressable, StyleSheet } from "react-native";
-import { colors } from "../theme/colors";
+import { useTheme, useThemed } from "../theme/ThemeProvider";
+import type { ThemeColors } from "../theme/colors";
 import { ProgressBar } from "./ProgressBar";
 import { useWaterStore } from "../store/waterStore";
 
@@ -11,6 +12,7 @@ const QUICK_ADDS = [250, 500, -250];
 
 /** Contatore acqua con pulsanti veloci (+250ml, +500ml, -250ml). Stato in Zustand. */
 export function WaterCounter({ targetMl }: Props) {
+  const { colors, styles } = useThemed(makeStyles);
   const ml = useWaterStore((s) => s.ml);
   const add = useWaterStore((s) => s.add);
 
@@ -40,7 +42,8 @@ export function WaterCounter({ targetMl }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
     borderRadius: 18,

@@ -1,5 +1,6 @@
 import { View, Text, Pressable, StyleSheet } from "react-native";
-import { colors } from "../theme/colors";
+import { useTheme, useThemed } from "../theme/ThemeProvider";
+import type { ThemeColors } from "../theme/colors";
 import { Icon } from "./Icon";
 import type { DiaryEntry } from "../types/diary";
 
@@ -14,6 +15,7 @@ interface Props {
 
 /** Una cella della mini-tabella macro (valore sopra, etichetta colorata sotto). */
 function MacroCell({ value, label, color, unit = "" }: { value: number; label: string; color: string; unit?: string }) {
+  const { colors, styles } = useThemed(makeStyles);
   return (
     <View style={styles.cell}>
       <Text style={styles.cellValue}>
@@ -31,6 +33,7 @@ function MacroCell({ value, label, color, unit = "" }: { value: number; label: s
  * I totali del pasto sono calcolati dalle voci.
  */
 export function MealCard({ title, entries, onAdd, onDelete, showAdd = true }: Props) {
+  const { colors, styles } = useThemed(makeStyles);
   const t = entries.reduce(
     (acc, e) => {
       acc.kcal += e.kcal;
@@ -84,7 +87,8 @@ export function MealCard({ title, entries, onAdd, onDelete, showAdd = true }: Pr
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
     borderRadius: 16,

@@ -10,7 +10,8 @@ import {
 } from "react-native";
 import { ScreenHeader } from "../src/components/ScreenHeader";
 import { NumberField } from "../src/components/NumberField";
-import { colors } from "../src/theme/colors";
+import { useTheme, useThemed } from "../src/theme/ThemeProvider";
+import type { ThemeColors } from "../src/theme/colors";
 import {
   useCreateRecipe,
   useDeleteRecipe,
@@ -25,6 +26,7 @@ interface DraftItem {
 }
 
 export default function RecipesScreen() {
+  const { colors, styles } = useThemed(makeStyles);
   const recipes = useRecipesQuery();
   const foods = useFoodsQuery();
   const createRecipe = useCreateRecipe();
@@ -160,7 +162,8 @@ export default function RecipesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { padding: 16, gap: 14, paddingBottom: 60 },
   card: {

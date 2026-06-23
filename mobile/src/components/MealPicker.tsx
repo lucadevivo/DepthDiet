@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { ScrollView, Text, Pressable, ActivityIndicator, StyleSheet } from "react-native";
-import { colors } from "../theme/colors";
+import { useTheme, useThemed } from "../theme/ThemeProvider";
+import type { ThemeColors } from "../theme/colors";
 import type { Meal } from "../types/meals";
 
 interface Props {
@@ -16,6 +17,7 @@ interface Props {
  * tra i pasti disponibili, seleziona automaticamente il primo.
  */
 export function MealPicker({ meals, loading, value, onChange }: Props) {
+  const { colors, styles } = useThemed(makeStyles);
   const valid = value != null && meals.some((m) => m.id === value);
 
   useEffect(() => {
@@ -50,7 +52,8 @@ export function MealPicker({ meals, loading, value, onChange }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   row: { gap: 8, paddingVertical: 2 },
   pill: {
     paddingHorizontal: 16,

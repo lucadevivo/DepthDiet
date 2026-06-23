@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet } from "react-native";
-import { colors } from "../theme/colors";
+import { useTheme, useThemed } from "../theme/ThemeProvider";
+import type { ThemeColors } from "../theme/colors";
 import { ProgressBar } from "./ProgressBar";
 
 interface Props {
@@ -9,6 +10,7 @@ interface Props {
 
 /** Intestazione della Dashboard: calorie consumate vs obiettivo, ben visibili in alto. */
 export function CalorieSummary({ consumed, target }: Props) {
+  const { colors, styles } = useThemed(makeStyles);
   const remaining = Math.round(target - consumed);
   return (
     <View style={styles.card}>
@@ -27,7 +29,8 @@ export function CalorieSummary({ consumed, target }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
     borderRadius: 18,

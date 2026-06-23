@@ -4,10 +4,26 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "../src/api/queryClient";
-import { colors } from "../src/theme/colors";
+import { ThemeProvider, useTheme } from "../src/theme/ThemeProvider";
+
+/** Stack + StatusBar che seguono il tema attivo (consuma il context). */
+function ThemedStack() {
+  const { colors, scheme } = useTheme();
+  return (
+    <>
+      <StatusBar style={scheme === "light" ? "dark" : "light"} />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: colors.bg },
+        }}
+      />
+    </>
+  );
+}
 
 /**
- * Layout radice: monta i provider globali (TanStack Query, SafeArea, gesture)
+ * Layout radice: monta i provider globali (Tema, TanStack Query, SafeArea, gesture)
  * attorno a tutte le rotte. La navigazione vera è nel gruppo (tabs).
  */
 export default function RootLayout() {
@@ -15,13 +31,9 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
-          <StatusBar style="light" />
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: colors.bg },
-            }}
-          />
+          <ThemeProvider>
+            <ThemedStack />
+          </ThemeProvider>
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

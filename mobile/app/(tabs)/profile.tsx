@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { ScrollView, View, Text, Pressable, ActivityIndicator, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Link } from "expo-router";
-import { colors } from "../../src/theme/colors";
+import { useTheme, useThemed } from "../../src/theme/ThemeProvider";
+import type { ThemeColors } from "../../src/theme/colors";
 import { NumberField } from "../../src/components/NumberField";
 import { SegmentedControl } from "../../src/components/SegmentedControl";
 import { OptionList } from "../../src/components/OptionList";
@@ -22,6 +23,7 @@ import {
 } from "../../src/types/profile";
 
 export default function ProfileScreen() {
+  const { colors, styles } = useThemed(makeStyles);
   const insets = useSafeAreaInsets();
   const profileQuery = useProfileQuery();
   const updateProfile = useUpdateProfile();
@@ -66,6 +68,8 @@ export default function ProfileScreen() {
       activity_level: activity,
       goal,
       diet_preset: profileQuery.data?.diet_preset ?? "standard",
+      formula: profileQuery.data?.formula ?? "mifflin",
+      body_fat_pct: profileQuery.data?.body_fat_pct ?? null,
       ...(profileQuery.data?.diet_preset === "custom" &&
       profileQuery.data.diet_carbs_pct != null
         ? {
@@ -176,11 +180,13 @@ export default function ProfileScreen() {
 }
 
 function Label({ text }: { text: string }) {
+  const { colors, styles } = useThemed(makeStyles);
   return <Text style={styles.fieldLabel}>{text}</Text>;
 }
 
 /** Striscia anagrafica (Height/Weight/Gender/Age) dai dati salvati. */
 function ProfileStats({ profile }: { profile: Profile | undefined }) {
+  const { colors, styles } = useThemed(makeStyles);
   if (!profile || profile.weight_kg == null) {
     return (
       <View style={styles.emptyCard}>
@@ -205,6 +211,7 @@ function ProfileStats({ profile }: { profile: Profile | undefined }) {
 
 /** Card metriche calcolate: BMR, BMI, fabbisogno idrico. */
 function Metrics({ profile }: { profile: Profile | undefined }) {
+  const { colors, styles } = useThemed(makeStyles);
   const m = bodyMetricsFromProfile(profile);
   if (!m) return null;
   return (
@@ -232,6 +239,7 @@ function Metrics({ profile }: { profile: Profile | undefined }) {
 }
 
 function ErrorBox({ onRetry }: { onRetry: () => void }) {
+  const { colors, styles } = useThemed(makeStyles);
   return (
     <View style={styles.emptyCard}>
       <Text style={styles.errorText}>
@@ -245,7 +253,8 @@ function ErrorBox({ onRetry }: { onRetry: () => void }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { padding: 16, gap: 16, paddingBottom: 48 },
   heading: { color: colors.text, fontSize: 28, fontWeight: "800" },

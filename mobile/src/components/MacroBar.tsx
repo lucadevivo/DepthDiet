@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet } from "react-native";
-import { colors } from "../theme/colors";
+import { useTheme, useThemed } from "../theme/ThemeProvider";
+import type { ThemeColors } from "../theme/colors";
 import { ProgressBar } from "./ProgressBar";
 
 interface Props {
@@ -13,6 +14,7 @@ interface Props {
 
 /** Riga macro: nome, grammi consumati/target e grammi RIMANENTI al target. */
 export function MacroBar({ label, current, target, color, emphasized }: Props) {
+  const { colors, styles } = useThemed(makeStyles);
   const remaining = Math.max(0, Math.round(target - current));
   return (
     <View style={[styles.container, emphasized && styles.emphasizedBox]}>
@@ -33,7 +35,8 @@ export function MacroBar({ label, current, target, color, emphasized }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   container: { gap: 6 },
   emphasizedBox: {
     backgroundColor: colors.surfaceAlt,

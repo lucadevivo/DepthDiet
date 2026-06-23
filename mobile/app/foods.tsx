@@ -11,11 +11,13 @@ import {
 import { Link } from "expo-router";
 import { ScreenHeader } from "../src/components/ScreenHeader";
 import { NumberField } from "../src/components/NumberField";
-import { colors } from "../src/theme/colors";
+import { useTheme, useThemed } from "../src/theme/ThemeProvider";
+import type { ThemeColors } from "../src/theme/colors";
 import { useCreateFood, useDeleteFood, useFoodsQuery } from "../src/hooks/useFoods";
 import type { CustomFoodInput } from "../src/types/food";
 
 export default function FoodsScreen() {
+  const { colors, styles } = useThemed(makeStyles);
   const foods = useFoodsQuery();
   const createFood = useCreateFood();
   const deleteFood = useDeleteFood();
@@ -138,7 +140,8 @@ export default function FoodsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { padding: 16, gap: 14, paddingBottom: 60 },
   offRow: { flexDirection: "row", gap: 10 },

@@ -13,7 +13,8 @@ import { ScreenHeader } from "../src/components/ScreenHeader";
 import { NumberField } from "../src/components/NumberField";
 import { SegmentedControl } from "../src/components/SegmentedControl";
 import { Icon } from "../src/components/Icon";
-import { colors } from "../src/theme/colors";
+import { useTheme, useThemed } from "../src/theme/ThemeProvider";
+import type { ThemeColors } from "../src/theme/colors";
 import { todayISO } from "../src/lib/date";
 import { useAnalyzeMeal } from "../src/hooks/useAnalyzeMeal";
 import { useAddDiaryEntry } from "../src/hooks/useDiary";
@@ -110,6 +111,7 @@ function toEditItems(result: AnalyzeResult): EditItem[] {
 }
 
 export default function AnalyzeScreen() {
+  const { colors, styles } = useThemed(makeStyles);
   const router = useRouter();
 
   // Pasto e data ereditati dal Diario (così lo scan finisce sul giorno giusto).
@@ -423,7 +425,8 @@ export default function AnalyzeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { padding: 16, gap: 12, paddingBottom: 60 },
   lead: { color: colors.textMuted, fontSize: 14, lineHeight: 20 },

@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet } from "react-native";
-import { colors } from "../theme/colors";
+import { useTheme, useThemed } from "../theme/ThemeProvider";
+import type { ThemeColors } from "../theme/colors";
 import { ProgressBar } from "./ProgressBar";
 
 interface Props {
@@ -15,6 +16,7 @@ interface Props {
  * Pensata per essere affiancata (3 colonne) nell'header dei totali del Diario.
  */
 export function MacroProgressColumn({ label, current, target, color }: Props) {
+  const { colors, styles } = useThemed(makeStyles);
   return (
     <View style={styles.col}>
       <Text style={[styles.label, { color }]} numberOfLines={1}>
@@ -29,7 +31,8 @@ export function MacroProgressColumn({ label, current, target, color }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   col: { flex: 1, gap: 6 },
   label: { fontSize: 13, fontWeight: "700", textAlign: "center" },
   values: { textAlign: "center" },

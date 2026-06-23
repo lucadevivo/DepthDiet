@@ -14,7 +14,8 @@ import { NumberField } from "../../src/components/NumberField";
 import { SegmentedControl } from "../../src/components/SegmentedControl";
 import { MealPicker } from "../../src/components/MealPicker";
 import { Icon } from "../../src/components/Icon";
-import { colors } from "../../src/theme/colors";
+import { useTheme, useThemed } from "../../src/theme/ThemeProvider";
+import type { ThemeColors } from "../../src/theme/colors";
 import { todayISO } from "../../src/lib/date";
 import { useAddDiaryEntry } from "../../src/hooks/useDiary";
 import { useMealsQuery } from "../../src/hooks/useMeals";
@@ -31,6 +32,7 @@ const MODE_OPTIONS: { value: Mode; label: string }[] = [
 ];
 
 export default function AddDiaryScreen() {
+  const { colors, styles } = useThemed(makeStyles);
   const router = useRouter();
 
   // Pasto e data preselezionati dalla MealCard del Diario (la data fa sì che la
@@ -206,6 +208,7 @@ function PickList<T extends { id: number }>({
   render,
   emptyText,
 }: PickListProps<T>) {
+  const { colors, styles } = useThemed(makeStyles);
   if (loading) return <ActivityIndicator color={colors.protein} style={{ marginVertical: 12 }} />;
   if (error) return <Text style={styles.error}>Failed to load.</Text>;
   if (items.length === 0) return <Text style={styles.empty}>{emptyText}</Text>;
@@ -228,10 +231,12 @@ function PickList<T extends { id: number }>({
 }
 
 function Label({ text }: { text: string }) {
+  const { colors, styles } = useThemed(makeStyles);
   return <Text style={styles.label}>{text}</Text>;
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { padding: 16, gap: 12, paddingBottom: 60 },
   label: { color: colors.text, fontSize: 14, fontWeight: "700", marginTop: 6 },

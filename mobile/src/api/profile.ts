@@ -1,6 +1,7 @@
 import { apiFetch } from "./client";
 import type {
   DietInput,
+  FormulaInput,
   Profile,
   ProfileInput,
   PutDietResponse,
@@ -23,6 +24,14 @@ export function updateProfile(input: ProfileInput): Promise<PutProfileResponse> 
 /** Cambia il preset dieta: ricalcola i macro sulle calorie obiettivo già salvate. */
 export function updateDiet(input: DietInput): Promise<PutDietResponse> {
   return apiFetch<PutDietResponse>("/api/profile/diet", {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+/** Cambia la formula BMR: ricalcola BMR/TDEE/obiettivi dal profilo salvato. */
+export function updateFormula(input: FormulaInput): Promise<PutProfileResponse> {
+  return apiFetch<PutProfileResponse>("/api/profile/formula", {
     method: "PUT",
     body: JSON.stringify(input),
   });

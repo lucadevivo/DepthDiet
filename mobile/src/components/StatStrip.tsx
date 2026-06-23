@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet } from "react-native";
-import { colors } from "../theme/colors";
+import { useTheme, useThemed } from "../theme/ThemeProvider";
+import type { ThemeColors } from "../theme/colors";
 
 export interface Stat {
   label: string;
@@ -8,6 +9,7 @@ export interface Stat {
 
 /** Striscia a 4 colonne con i dati anagrafici (stile "Macros"). Sola lettura. */
 export function StatStrip({ stats }: { stats: Stat[] }) {
+  const { colors, styles } = useThemed(makeStyles);
   return (
     <View style={styles.strip}>
       {stats.map((s, i) => (
@@ -22,7 +24,8 @@ export function StatStrip({ stats }: { stats: Stat[] }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   strip: {
     flexDirection: "row",
     backgroundColor: colors.surface,

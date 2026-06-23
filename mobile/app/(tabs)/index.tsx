@@ -2,7 +2,8 @@ import { useState } from "react";
 import { ScrollView, View, Text, Pressable, ActivityIndicator, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { colors } from "../../src/theme/colors";
+import { useTheme, useThemed } from "../../src/theme/ThemeProvider";
+import type { ThemeColors } from "../../src/theme/colors";
 import { todayISO, shiftISO, formatDayLabel } from "../../src/lib/date";
 import { useDiaryQuery, useDeleteDiaryEntry } from "../../src/hooks/useDiary";
 import { useProfileQuery } from "../../src/hooks/useProfile";
@@ -16,6 +17,7 @@ import { Icon } from "../../src/components/Icon";
 const FALLBACK = { calories: 2600, protein_g: 190, carbs_g: 270, fat_g: 75 };
 
 export default function DiaryScreen() {
+  const { colors, styles } = useThemed(makeStyles);
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [date, setDate] = useState(todayISO());
@@ -129,7 +131,8 @@ export default function DiaryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
 
   header: {

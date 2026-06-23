@@ -11,7 +11,8 @@ import {
 } from "react-native";
 import { ScreenHeader } from "../src/components/ScreenHeader";
 import { Icon } from "../src/components/Icon";
-import { colors } from "../src/theme/colors";
+import { useTheme, useThemed } from "../src/theme/ThemeProvider";
+import type { ThemeColors } from "../src/theme/colors";
 import {
   useMealsQuery,
   useCreateMeal,
@@ -23,6 +24,7 @@ import type { Meal } from "../src/types/meals";
 
 /** Profile → Meals: crea, rinomina, riordina ed elimina i pasti (F3). */
 export default function MealsScreen() {
+  const { colors, styles } = useThemed(makeStyles);
   const meals = useMealsQuery();
   const create = useCreateMeal();
   const reorder = useReorderMeals();
@@ -114,6 +116,7 @@ function MealRow({
   onMoveUp: () => void;
   onMoveDown: () => void;
 }) {
+  const { colors, styles } = useThemed(makeStyles);
   const rename = useRenameMeal();
   const del = useDeleteMeal();
   const [editing, setEditing] = useState(false);
@@ -174,7 +177,8 @@ function MealRow({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { padding: 16, gap: 14, paddingBottom: 60 },
   lead: { color: colors.textMuted, fontSize: 13, lineHeight: 18 },
