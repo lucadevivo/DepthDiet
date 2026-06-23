@@ -8,23 +8,22 @@ function TabIcon({ emoji, color, size }: { emoji: string; color: ColorValue; siz
 }
 
 /**
- * Navigazione principale a Bottom Tabs. Per la Fase 2: Oggi (Dashboard) e Storico.
- * Le tab di Diario/Scanner/Profilo si aggiungeranno nelle fasi successive.
+ * Navigazione principale a Bottom Tabs (stile "Macros"): sfondo dark, tab attiva
+ * in rosso. Niente header di sistema — ogni schermata disegna il proprio header.
  */
 export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
-        headerStyle: { backgroundColor: colors.bg },
-        headerTitleStyle: { color: colors.text },
-        headerShadowVisible: false,
+        headerShown: false,
         sceneStyle: { backgroundColor: colors.bg },
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
         },
-        tabBarActiveTintColor: colors.calories,
+        tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
+        tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
       }}
     >
       <Tabs.Screen

@@ -1,20 +1,28 @@
 /**
- * Palette unica dell'app (tema scuro). Centralizzata così i componenti restano
- * coerenti ed è facile introdurre un tema chiaro in seguito.
+ * Palette unica dell'app (tema scuro), ispirata all'app di riferimento "Macros":
+ * sfondo near-black, card grigio scuro, accento rosso corallo. Centralizzata così
+ * i componenti restano coerenti.
  */
 export const colors = {
-  bg: "#0f1115",
-  surface: "#171a21",
-  surfaceAlt: "#1f232c",
-  border: "#262b36",
-  text: "#f4f6fb",
-  textMuted: "#8b93a7",
+  // Superfici (dal più scuro al più chiaro)
+  bg: "#0B0B0D",
+  surface: "#161618",
+  surfaceAlt: "#1F1F22",
+  border: "#27272B",
 
-  // Accenti macro. Le proteine hanno un accento dedicato e prominente:
-  // l'utente fa pesistica e le monitora rigorosamente.
-  protein: "#5b8cff",
-  carbs: "#f2a93b",
-  fat: "#ef6f6c",
-  calories: "#3ddc97",
-  water: "#39b7e0",
+  // Testo
+  text: "#F4F5F7",
+  textMuted: "#8A8A91",
+
+  // Accento primario (azioni, tab attiva, totale calorie, "Aggiungi")
+  primary: "#EE4A52",
+  primaryDim: "#7A2A2E", // versione spenta per tracce/sfondi tenui
+  onPrimary: "#FFFFFF",
+
+  // Accenti macro (allineati al riferimento: proteine prominenti per l'utente)
+  protein: "#E84B8A", // magenta
+  carbs: "#F5A623", // arancio
+  fat: "#4A90E2", // blu
+  calories: "#EE4A52", // = primary, headline metric
+  water: "#39B7E0", // ciano
 } as const;

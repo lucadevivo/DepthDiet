@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { ScreenHeader } from "../../src/components/ScreenHeader";
 import { NumberField } from "../../src/components/NumberField";
 import { SegmentedControl } from "../../src/components/SegmentedControl";
@@ -37,7 +37,11 @@ export default function AddDiaryScreen() {
   const date = todayISO();
   const add = useAddDiaryEntry(date);
 
-  const [meal, setMeal] = useState<MealName>("lunch");
+  // Pasto preselezionato se aperto dal bottone "Aggiungi" di una MealCard.
+  const params = useLocalSearchParams<{ meal?: string }>();
+  const initialMeal: MealName =
+    params.meal && params.meal in MEAL_LABELS ? (params.meal as MealName) : "lunch";
+  const [meal, setMeal] = useState<MealName>(initialMeal);
   const [mode, setMode] = useState<Mode>("custom_food");
 
   // Alimento
