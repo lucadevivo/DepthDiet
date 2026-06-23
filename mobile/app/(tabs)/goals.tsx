@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme, useThemed } from "../../src/theme/ThemeProvider";
 import type { ThemeColors } from "../../src/theme/colors";
 import { useProfileQuery, useUpdateDiet } from "../../src/hooks/useProfile";
-import { MacroSplitBar } from "../../src/components/MacroSplitBar";
+import { MacroDonut } from "../../src/components/MacroDonut";
 import { NumberField } from "../../src/components/NumberField";
 import { Icon } from "../../src/components/Icon";
 import {
@@ -56,7 +56,7 @@ export default function GoalsScreen() {
           {/* Macronutrienti correnti. */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Macronutrients</Text>
-            <MacroSplitBar
+            <MacroDonut
               protein_g={p!.target_protein_g ?? 0}
               carbs_g={p!.target_carbs_g ?? 0}
               fat_g={p!.target_fat_g ?? 0}
@@ -122,9 +122,6 @@ export default function GoalsScreen() {
             ) : null}
           </View>
 
-          <Text style={styles.note}>
-            A real macro donut is coming in a later pass (to be tuned on the phone).
-          </Text>
         </>
       )}
     </ScrollView>

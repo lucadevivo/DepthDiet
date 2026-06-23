@@ -90,15 +90,7 @@ export default function ProfileScreen() {
       contentContainerStyle={[styles.content, { paddingTop: insets.top + 8 }]}
       keyboardShouldPersistTaps="handled"
     >
-      <View style={styles.titleRow}>
-        <Text style={styles.heading}>Profile</Text>
-        <Link href="/weight" asChild>
-          <Pressable style={styles.weightBtn} hitSlop={8}>
-            <Icon name="weight" size={18} color={colors.textMuted} />
-            <Text style={styles.weightBtnText}>Weight</Text>
-          </Pressable>
-        </Link>
-      </View>
+      <Text style={styles.heading}>Profile</Text>
 
       {profileQuery.isLoading ? (
         <View style={styles.center}>

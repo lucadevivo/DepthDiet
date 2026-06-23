@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ScrollView,
   View,
@@ -12,7 +12,6 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { ScreenHeader } from "../../src/components/ScreenHeader";
 import { NumberField } from "../../src/components/NumberField";
 import { SegmentedControl } from "../../src/components/SegmentedControl";
-import { MealPicker } from "../../src/components/MealPicker";
 import { Icon } from "../../src/components/Icon";
 import { useTheme, useThemed } from "../../src/theme/ThemeProvider";
 import type { ThemeColors } from "../../src/theme/colors";
@@ -23,20 +22,20 @@ import { useFoodsQuery, useRecipesQuery } from "../../src/hooks/useFoods";
 import type { AddDiaryBody } from "../../src/types/diary";
 import type { CustomFood, RecipeSummary } from "../../src/types/food";
 
-type Mode = "custom_food" | "recipe" | "manual";
+// Solo voci dal database: Alimenti o Ricette (niente più inserimento manuale).
+type Mode = "custom_food" | "recipe";
 
 const MODE_OPTIONS: { value: Mode; label: string }[] = [
   { value: "custom_food", label: "Food" },
   { value: "recipe", label: "Recipe" },
-  { value: "manual", label: "Manual" },
 ];
 
 export default function AddDiaryScreen() {
   const { colors, styles } = useThemed(makeStyles);
   const router = useRouter();
 
-  // Pasto e data preselezionati dalla MealCard del Diario (la data fa sì che la
-  // voce finisca sul giorno che stai guardando, non sempre su oggi).
+  // Pasto e data arrivano dalla MealCard del Diario: il pasto è FISSO (la sezione
+  // da cui ho premuto "+ Add"), non si riseleziona qui.
   const params = useLocalSearchParams<{ meal_id?: string; date?: string }>();
   const date = params.date && /^\d{4}-\d{2}-\d{2}$/.test(params.date) ? params.date : todayISO();
   const add = useAddDiaryEntry(date);
@@ -46,6 +45,14 @@ export default function AddDiaryScreen() {
   const [mealId, setMealId] = useState<number | null>(
     Number.isInteger(paramMealId) ? paramMealId : null,
   );
+  // Fallback: se il pasto non è stato passato (o non esiste più), usa il primo.
+  useEffect(() => {
+    const list = meals.data ?? [];
+    if (list.length > 0 && !list.some((m) => m.id === mealId)) setMealId(list[0]!.id);
+  }, [meals.data, mealId]);
+
+  const mealName = (meals.data ?? []).find((m) => m.id === mealId)?.name ?? "—";
+
   const [mode, setMode] = useState<Mode>("custom_food");
 
   // Alimento
@@ -58,13 +65,6 @@ export default function AddDiaryScreen() {
   const recipes = useRecipesQuery();
   const [recipeId, setRecipeId] = useState<number | null>(null);
 
-  // Manuale
-  const [desc, setDesc] = useState("");
-  const [kcal, setKcal] = useState("");
-  const [p, setP] = useState("");
-  const [c, setC] = useState("");
-  const [f, setF] = useState("");
-
   const onSubmit = () => {
     if (mealId == null) return;
     let body: AddDiaryBody | null = null;
@@ -72,51 +72,27 @@ export default function AddDiaryScreen() {
       const g = Number.parseFloat(grams);
       if (foodId == null || !Number.isFinite(g) || g <= 0) return;
       body = { date, meal_id: mealId, type: "custom_food", food_id: foodId, grams: g };
-    } else if (mode === "recipe") {
+    } else {
       if (recipeId == null) return;
       body = { date, meal_id: mealId, type: "recipe", recipe_id: recipeId };
-    } else {
-      const nk = Number.parseFloat(kcal);
-      if (!desc.trim() || !Number.isFinite(nk)) return;
-      body = {
-        date,
-        meal_id: mealId,
-        type: "manual",
-        description: desc.trim(),
-        kcal: nk,
-        protein_g: Number.parseFloat(p) || 0,
-        carbs_g: Number.parseFloat(c) || 0,
-        fat_g: Number.parseFloat(f) || 0,
-      };
     }
     add.mutate(body, { onSuccess: () => router.back() });
   };
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader title="Add to diary" />
+      <ScreenHeader title={`Add to ${mealName}`} />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {/* Scorciatoia: fotografa il pasto invece di inserirlo a mano. */}
         <Pressable
           style={styles.scanBtn}
-          onPress={() =>
-            router.push(`/analyze?meal_id=${mealId ?? ""}&date=${date}`)
-          }
+          onPress={() => router.push(`/analyze?meal_id=${mealId ?? ""}&date=${date}`)}
         >
           <Icon name="scan" size={20} color={colors.primary} />
           <Text style={styles.scanText}>Scan a meal with the camera</Text>
           <Icon name="chevron" size={18} color={colors.textMuted} />
         </Pressable>
 
-        <Label text="Meal" />
-        <MealPicker
-          meals={meals.data ?? []}
-          loading={meals.isLoading}
-          value={mealId}
-          onChange={setMealId}
-        />
-
-        <Label text="Type" />
         <SegmentedControl options={MODE_OPTIONS} value={mode} onChange={setMode} />
 
         {mode === "custom_food" ? (
@@ -139,9 +115,7 @@ export default function AddDiaryScreen() {
             />
             <NumberField label="Grams" value={grams} onChangeText={setGrams} unit="g" />
           </>
-        ) : null}
-
-        {mode === "recipe" ? (
+        ) : (
           <PickList
             loading={recipes.isLoading}
             error={recipes.isError}
@@ -151,27 +125,7 @@ export default function AddDiaryScreen() {
             render={(r: RecipeSummary) => `${r.name}  ·  ${r.totals.kcal} kcal`}
             emptyText="No recipes yet. Create one from the Recipes screen."
           />
-        ) : null}
-
-        {mode === "manual" ? (
-          <>
-            <TextInput
-              style={styles.input}
-              placeholder="Description (e.g. Apple)"
-              placeholderTextColor={colors.textMuted}
-              value={desc}
-              onChangeText={setDesc}
-            />
-            <View style={styles.row}>
-              <NumberField label="Kcal" value={kcal} onChangeText={setKcal} />
-              <NumberField label="Protein" value={p} onChangeText={setP} unit="g" />
-            </View>
-            <View style={styles.row}>
-              <NumberField label="Carbs" value={c} onChangeText={setC} unit="g" />
-              <NumberField label="Fat" value={f} onChangeText={setF} unit="g" />
-            </View>
-          </>
-        ) : null}
+        )}
 
         <Pressable
           onPress={onSubmit}
@@ -230,59 +184,52 @@ function PickList<T extends { id: number }>({
   );
 }
 
-function Label({ text }: { text: string }) {
-  const { colors, styles } = useThemed(makeStyles);
-  return <Text style={styles.label}>{text}</Text>;
-}
-
 const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: 16, gap: 12, paddingBottom: 60 },
-  label: { color: colors.text, fontSize: 14, fontWeight: "700", marginTop: 6 },
-  input: {
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    color: colors.text,
-    fontSize: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-  },
-  row: { flexDirection: "row", gap: 10 },
-  pick: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  pickActive: { borderColor: colors.protein, backgroundColor: colors.surfaceAlt },
-  pickText: { color: colors.text, fontSize: 14 },
-  pickTextActive: { fontWeight: "700", color: colors.protein },
-  empty: { color: colors.textMuted, fontSize: 13 },
-  saveBtn: {
-    backgroundColor: colors.primary,
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: "center",
-    marginTop: 8,
-  },
-  disabled: { opacity: 0.5 },
-  saveText: { color: colors.onPrimary, fontSize: 16, fontWeight: "800" },
-  error: { color: colors.fat, fontSize: 13 },
+    screen: { flex: 1, backgroundColor: colors.bg },
+    content: { padding: 16, gap: 12, paddingBottom: 60 },
+    input: {
+      backgroundColor: colors.surfaceAlt,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      color: colors.text,
+      fontSize: 16,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+    },
+    pick: {
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    pickActive: { borderColor: colors.protein, backgroundColor: colors.surfaceAlt },
+    pickText: { color: colors.text, fontSize: 14 },
+    pickTextActive: { fontWeight: "700", color: colors.protein },
+    empty: { color: colors.textMuted, fontSize: 13 },
+    saveBtn: {
+      backgroundColor: colors.primary,
+      borderRadius: 14,
+      paddingVertical: 16,
+      alignItems: "center",
+      marginTop: 8,
+    },
+    disabled: { opacity: 0.5 },
+    saveText: { color: colors.onPrimary, fontSize: 16, fontWeight: "800" },
+    error: { color: colors.fat, fontSize: 13 },
 
-  scanBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  scanText: { flex: 1, color: colors.text, fontSize: 15, fontWeight: "700" },
-});
+    scanBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      backgroundColor: colors.surface,
+      borderRadius: 14,
+      paddingVertical: 14,
+      paddingHorizontal: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    scanText: { flex: 1, color: colors.text, fontSize: 15, fontWeight: "700" },
+  });

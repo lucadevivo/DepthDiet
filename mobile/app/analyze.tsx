@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ScrollView,
   View,
@@ -29,7 +29,6 @@ import {
   isLidarSupported,
   LidarCancelled,
 } from "../src/lib/lidarMeal";
-import { MealPicker } from "../src/components/MealPicker";
 import { useMealsQuery } from "../src/hooks/useMeals";
 import type { AnalyzeBody, AnalyzeResult, MealItem, ReferenceType } from "../src/types/analyze";
 import type { AddDiaryBody } from "../src/types/diary";
@@ -124,6 +123,12 @@ export default function AnalyzeScreen() {
   const [mealId, setMealId] = useState<number | null>(
     Number.isInteger(paramMealId) ? paramMealId : null,
   );
+  // Il pasto è quello da cui sono entrato (fisso). Fallback al primo se mancante.
+  useEffect(() => {
+    const list = meals.data ?? [];
+    if (list.length > 0 && !list.some((m) => m.id === mealId)) setMealId(list[0]!.id);
+  }, [meals.data, mealId]);
+  const mealName = (meals.data ?? []).find((m) => m.id === mealId)?.name ?? "—";
   const [contextText, setContextText] = useState("");
   const [reference, setReference] = useState<RefChoice>("none");
   const [items, setItems] = useState<EditItem[]>([]);
@@ -247,13 +252,7 @@ export default function AnalyzeScreen() {
             Photograph the plate: the AI estimates the foods and matches them to your Foods.
           </Text>
 
-          <Text style={styles.label}>Meal</Text>
-          <MealPicker
-            meals={meals.data ?? []}
-            loading={meals.isLoading}
-            value={mealId}
-            onChange={setMealId}
-          />
+          <Text style={styles.label}>Meal: {mealName}</Text>
 
           <Text style={styles.label}>Context (optional)</Text>
           <TextInput
