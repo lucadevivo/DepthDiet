@@ -73,6 +73,7 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             DEVELOPMENT_TEAM="" \
             ENABLE_BITCODE=NO \
+            ENABLE_DEBUG_DYLIB=NO \
             build 2>&1 | tee xcodebuild.log
 
       - name: Carica i log (anche se fallisce)
