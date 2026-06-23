@@ -12,6 +12,7 @@ import { Link } from "expo-router";
 import { colors } from "../../src/theme/colors";
 import { NumberField } from "../../src/components/NumberField";
 import { SegmentedControl } from "../../src/components/SegmentedControl";
+import { Icon } from "../../src/components/Icon";
 import { useProfileQuery, useUpdateProfile } from "../../src/hooks/useProfile";
 import {
   ACTIVITY_OPTIONS,
@@ -76,15 +77,29 @@ export default function ProfileScreen() {
       keyboardShouldPersistTaps="handled"
     >
       <View style={styles.titleRow}>
-        <Text style={styles.heading}>Calcolatore obiettivi</Text>
-        <View style={styles.headerLinks}>
-          <Link href="/weight" style={styles.weightLink}>
-            ⚖️ Peso
-          </Link>
-          <Link href="/setup" style={styles.weightLink}>
-            ⚙️ Impostazioni
-          </Link>
-        </View>
+        <Text style={styles.heading}>Profile</Text>
+        <Link href="/weight" asChild>
+          <Pressable style={styles.weightBtn} hitSlop={8}>
+            <Icon name="weight" size={18} color={colors.textMuted} />
+            <Text style={styles.weightBtnText}>Weight</Text>
+          </Pressable>
+        </Link>
+      </View>
+
+      {/* Catalogo cibi e ricette (spostato qui dal Diary). */}
+      <View style={styles.catalog}>
+        <Link href="/foods" asChild>
+          <Pressable style={styles.catalogPill}>
+            <Icon name="food" size={18} color={colors.textMuted} />
+            <Text style={styles.catalogText}>Foods</Text>
+          </Pressable>
+        </Link>
+        <Link href="/recipes" asChild>
+          <Pressable style={styles.catalogPill}>
+            <Icon name="recipe" size={18} color={colors.textMuted} />
+            <Text style={styles.catalogText}>Recipes</Text>
+          </Pressable>
+        </Link>
       </View>
 
       {profileQuery.isLoading ? (
@@ -217,8 +232,22 @@ const styles = StyleSheet.create({
   content: { padding: 16, gap: 16, paddingBottom: 48 },
   heading: { color: colors.text, fontSize: 28, fontWeight: "800" },
   titleRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  headerLinks: { flexDirection: "row", gap: 14, flexWrap: "wrap", justifyContent: "flex-end" },
-  weightLink: { color: colors.water, fontSize: 15, fontWeight: "700" },
+  weightBtn: { flexDirection: "row", alignItems: "center", gap: 6 },
+  weightBtnText: { color: colors.textMuted, fontSize: 15, fontWeight: "700" },
+  catalog: { flexDirection: "row", gap: 12 },
+  catalogPill: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  catalogText: { color: colors.textMuted, fontSize: 15, fontWeight: "700" },
   center: { paddingVertical: 40, alignItems: "center" },
 
   targetsCard: {

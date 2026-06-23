@@ -13,15 +13,15 @@ export function shiftISO(iso: string, days: number): string {
   return new Date(d.getTime() - off * 60_000).toISOString().slice(0, 10);
 }
 
-const DAY_NAMES = ["dom", "lun", "mar", "mer", "gio", "ven", "sab"];
-const MONTH_NAMES = ["gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"];
+const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-/** Etichetta amichevole per il selettore giorno: "Oggi" / "Ieri" / "mer 23 giu". */
+/** Friendly label for the day selector: "Today" / "Yesterday" / "Wed 23 Jun". */
 export function formatDayLabel(iso: string): string {
   const today = todayISO();
-  if (iso === today) return "Oggi";
-  if (iso === shiftISO(today, -1)) return "Ieri";
-  if (iso === shiftISO(today, 1)) return "Domani";
+  if (iso === today) return "Today";
+  if (iso === shiftISO(today, -1)) return "Yesterday";
+  if (iso === shiftISO(today, 1)) return "Tomorrow";
   const d = new Date(iso + "T00:00:00");
   return `${DAY_NAMES[d.getDay()]} ${d.getDate()} ${MONTH_NAMES[d.getMonth()]}`;
 }

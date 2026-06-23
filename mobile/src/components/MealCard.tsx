@@ -45,10 +45,10 @@ export function MealCard({ title, entries, onAdd, onDelete }: Props) {
       <Text style={styles.title}>{title}</Text>
 
       <View style={styles.macroRow}>
-        <MacroCell value={t.carbs} label="Carb" color={colors.carbs} unit="g" />
-        <MacroCell value={t.protein} label="Proteine" color={colors.protein} unit="g" />
-        <MacroCell value={t.fat} label="Grassi" color={colors.fat} unit="g" />
-        <MacroCell value={t.kcal} label="Calorie" color={colors.textMuted} />
+        <MacroCell value={t.carbs} label="Carbs" color={colors.carbs} unit="g" />
+        <MacroCell value={t.protein} label="Protein" color={colors.protein} unit="g" />
+        <MacroCell value={t.fat} label="Fat" color={colors.fat} unit="g" />
+        <MacroCell value={t.kcal} label="Calories" color={colors.textMuted} />
       </View>
 
       {entries.length > 0 ? (
@@ -74,7 +74,7 @@ export function MealCard({ title, entries, onAdd, onDelete }: Props) {
 
       <Pressable onPress={onAdd} style={styles.addBtn} hitSlop={6}>
         <Icon name="add" size={18} color={colors.primary} />
-        <Text style={styles.addText}>Aggiungi</Text>
+        <Text style={styles.addText}>Add</Text>
       </Pressable>
     </View>
   );

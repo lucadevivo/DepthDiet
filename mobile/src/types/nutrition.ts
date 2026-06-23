@@ -3,9 +3,9 @@
 export type MealName = "breakfast" | "lunch" | "dinner" | "snack";
 
 export const MEAL_LABELS: Record<MealName, string> = {
-  breakfast: "Colazione",
-  lunch: "Pranzo",
-  dinner: "Cena",
+  breakfast: "Breakfast",
+  lunch: "Lunch",
+  dinner: "Dinner",
   snack: "Snack",
 };
 

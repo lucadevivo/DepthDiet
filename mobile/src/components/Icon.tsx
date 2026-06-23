@@ -12,6 +12,7 @@ const MAP = {
   today: "today-outline",
   diary: "book-outline",
   history: "time-outline",
+  goals: "pie-chart-outline",
   profile: "person-circle-outline",
   settings: "settings-outline",
   back: "chevron-back",

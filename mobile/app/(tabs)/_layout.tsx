@@ -30,29 +30,29 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Oggi",
-          tabBarIcon: ({ color, size }) => <TabBarIcon name="today" color={color} size={size} />,
-        }}
-      />
-      <Tabs.Screen
-        name="diary"
-        options={{
-          title: "Diario",
+          title: "Diary",
           tabBarIcon: ({ color, size }) => <TabBarIcon name="diary" color={color} size={size} />,
-        }}
-      />
-      <Tabs.Screen
-        name="history"
-        options={{
-          title: "Storico",
-          tabBarIcon: ({ color, size }) => <TabBarIcon name="history" color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profilo",
+          title: "Profile",
           tabBarIcon: ({ color, size }) => <TabBarIcon name="profile" color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="goals"
+        options={{
+          title: "Goals",
+          tabBarIcon: ({ color, size }) => <TabBarIcon name="goals" color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: "Settings",
+          tabBarIcon: ({ color, size }) => <TabBarIcon name="settings" color={color} size={size} />,
         }}
       />
     </Tabs>
