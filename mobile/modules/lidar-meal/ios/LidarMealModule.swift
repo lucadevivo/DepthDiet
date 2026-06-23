@@ -106,7 +106,7 @@ final class LidarCaptureViewController: UIViewController, ARSessionDelegate {
     view.addSubview(crosshair)
 
     instruction.translatesAutoresizingMaskIntoConstraints = false
-    instruction.text = "Inquadra il piatto dall'alto, poi tocca Misura"
+    instruction.text = "Inquadra il piatto dall'alto, poi tocca Scatta"
     instruction.textColor = .white
     instruction.font = .systemFont(ofSize: 16, weight: .semibold)
     instruction.numberOfLines = 0
@@ -117,7 +117,7 @@ final class LidarCaptureViewController: UIViewController, ARSessionDelegate {
     instruction.layer.shadowOffset = .zero
     view.addSubview(instruction)
 
-    configureButton(measureButton, title: "Misura", bg: UIColor.systemGreen)
+    configureButton(measureButton, title: "Scatta", bg: UIColor.systemGreen)
     measureButton.addTarget(self, action: #selector(onMeasure), for: .touchUpInside)
     view.addSubview(measureButton)
 
