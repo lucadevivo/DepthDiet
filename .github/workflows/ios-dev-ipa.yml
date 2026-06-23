@@ -33,15 +33,21 @@ jobs:
       - name: Individua workspace e scheme
         id: xc
         run: |
-          WORKSPACE=$(ls ios/*.xcworkspace -d | head -1)
-          echo "workspace=$WORKSPACE" >> "$GITHUB_OUTPUT"
-          echo "Workspace: $WORKSPACE"
-          echo "--- schemi disponibili ---"
+          set -euo pipefail
+          WORKSPACE=$(find ios -maxdepth 1 -name '*.xcworkspace' | head -1)
+          echo "Workspace trovato: [$WORKSPACE]"
+          echo "--- xcodebuild -list ---"
           xcodebuild -list -workspace "$WORKSPACE" || true
-          SCHEME=$(xcodebuild -list -workspace "$WORKSPACE" 2>/dev/null \
-            | awk '/Schemes:/{f=1;next} f&&NF{gsub(/^ +/,"");print;exit}')
+          # Scheme dell'app: il primo diverso da "Pods", via output JSON.
+          SCHEME=$(xcodebuild -list -json -workspace "$WORKSPACE" \
+            | python3 -c "import json,sys; s=json.load(sys.stdin).get('workspace',{}).get('schemes',[]); print(next((x for x in s if x!='Pods'), s[0] if s else ''))")
+          # Fallback: nome del workspace senza estensione.
+          if [ -z "$SCHEME" ]; then
+            SCHEME=$(basename "$WORKSPACE" .xcworkspace)
+          fi
+          echo "Scheme scelto: [$SCHEME]"
+          echo "workspace=$WORKSPACE" >> "$GITHUB_OUTPUT"
           echo "scheme=$SCHEME" >> "$GITHUB_OUTPUT"
-          echo "Scheme scelto: $SCHEME"
 
       - name: Build Debug per device, senza firma
         run: |
