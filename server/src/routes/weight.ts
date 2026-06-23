@@ -2,7 +2,7 @@ import { Router } from "express";
 import { deleteWeight, listWeights, logWeight } from "../repositories/weight.js";
 import { getProfile, updateProfileTargets } from "../repositories/profile.js";
 import { computeAdaptive } from "../services/adaptiveTdee.js";
-import { distributeMacros } from "../services/tdee.js";
+import { macrosFromCalories, resolvePercentages } from "../services/tdee.js";
 
 export const weightRouter = Router();
 
@@ -52,7 +52,13 @@ weightRouter.post("/adaptive/apply", (_req, res) => {
     res.status(409).json({ error: "no_adjustment", detail: suggestion.reason });
     return;
   }
-  const macros = distributeMacros(suggestion.suggestedTargetCalories, profile.weight_kg, profile.goal);
+  // Ribilancia i macro sulle nuove calorie mantenendo il preset dieta scelto.
+  const pct = resolvePercentages(profile.diet_preset, {
+    carbs_pct: profile.diet_carbs_pct ?? 0,
+    protein_pct: profile.diet_protein_pct ?? 0,
+    fat_pct: profile.diet_fat_pct ?? 0,
+  });
+  const macros = macrosFromCalories(suggestion.suggestedTargetCalories, pct);
   const updated = updateProfileTargets({
     target_calories: suggestion.suggestedTargetCalories,
     target_protein_g: macros.protein_g,

@@ -1,5 +1,5 @@
 import { getDb } from "../db/connection.js";
-import type { ActivityLevel, Goal, Sex } from "../services/tdee.js";
+import type { ActivityLevel, DietPreset, Goal, Sex } from "../services/tdee.js";
 
 /** La riga (singola) di user_profile. I campi sono null finché non si calcola il profilo. */
 export interface Profile {
@@ -10,6 +10,10 @@ export interface Profile {
   sex: Sex | null;
   activity_level: ActivityLevel | null;
   goal: Goal | null;
+  diet_preset: DietPreset;
+  diet_carbs_pct: number | null;
+  diet_protein_pct: number | null;
+  diet_fat_pct: number | null;
   target_calories: number | null;
   target_protein_g: number | null;
   target_carbs_g: number | null;
@@ -31,6 +35,10 @@ export interface ProfileUpdate {
   sex: Sex;
   activity_level: ActivityLevel;
   goal: Goal;
+  diet_preset: DietPreset;
+  diet_carbs_pct: number | null;
+  diet_protein_pct: number | null;
+  diet_fat_pct: number | null;
   target_calories: number;
   target_protein_g: number;
   target_carbs_g: number;
@@ -55,12 +63,43 @@ export function updateProfileTargets(t: {
   return getProfile();
 }
 
-/** Salva parametri fisici + obiettivi calcolati nella riga singola. */
+/** Aggiorna SOLO il preset dieta + i macro ricalcolati (usato dal tab Goals). */
+export function updateProfileDiet(d: {
+  diet_preset: DietPreset;
+  diet_carbs_pct: number | null;
+  diet_protein_pct: number | null;
+  diet_fat_pct: number | null;
+  target_protein_g: number;
+  target_carbs_g: number;
+  target_fat_g: number;
+}): Profile {
+  getDb()
+    .prepare(
+      `UPDATE user_profile SET
+         diet_preset = ?, diet_carbs_pct = ?, diet_protein_pct = ?, diet_fat_pct = ?,
+         target_protein_g = ?, target_carbs_g = ?, target_fat_g = ?,
+         updated_at = datetime('now')
+       WHERE id = 1`,
+    )
+    .run(
+      d.diet_preset,
+      d.diet_carbs_pct,
+      d.diet_protein_pct,
+      d.diet_fat_pct,
+      d.target_protein_g,
+      d.target_carbs_g,
+      d.target_fat_g,
+    );
+  return getProfile();
+}
+
+/** Salva parametri fisici + preset + obiettivi calcolati nella riga singola. */
 export function updateProfile(u: ProfileUpdate): Profile {
   getDb()
     .prepare(
       `UPDATE user_profile SET
          weight_kg = ?, height_cm = ?, age = ?, sex = ?, activity_level = ?, goal = ?,
+         diet_preset = ?, diet_carbs_pct = ?, diet_protein_pct = ?, diet_fat_pct = ?,
          target_calories = ?, target_protein_g = ?, target_carbs_g = ?, target_fat_g = ?,
          updated_at = datetime('now')
        WHERE id = 1`,
@@ -72,6 +111,10 @@ export function updateProfile(u: ProfileUpdate): Profile {
       u.sex,
       u.activity_level,
       u.goal,
+      u.diet_preset,
+      u.diet_carbs_pct,
+      u.diet_protein_pct,
+      u.diet_fat_pct,
       u.target_calories,
       u.target_protein_g,
       u.target_carbs_g,

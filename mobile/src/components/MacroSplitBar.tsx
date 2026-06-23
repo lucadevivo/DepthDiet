@@ -24,9 +24,9 @@ export function MacroSplitBar({ protein_g, carbs_g, fat_g }: Props) {
   const pct = (v: number) => (tot > 0 ? Math.round((v / tot) * 100) : 0);
 
   const segments = [
-    { key: "carbs", g: carbs_g, kc: kc.carbs, color: colors.carbs, label: "Carboidrati" },
-    { key: "protein", g: protein_g, kc: kc.protein, color: colors.protein, label: "Proteine" },
-    { key: "fat", g: fat_g, kc: kc.fat, color: colors.fat, label: "Grassi" },
+    { key: "carbs", g: carbs_g, kc: kc.carbs, color: colors.carbs, label: "Carbs" },
+    { key: "protein", g: protein_g, kc: kc.protein, color: colors.protein, label: "Protein" },
+    { key: "fat", g: fat_g, kc: kc.fat, color: colors.fat, label: "Fat" },
   ];
 
   return (

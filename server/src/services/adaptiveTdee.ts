@@ -13,7 +13,13 @@ import type { WeightEntry } from "../repositories/weight.js";
 
 const KCAL_PER_KG = 7700;
 /** Variazione di peso settimanale ATTESA per ciascun obiettivo (kg/settimana). */
-const GOAL_WEEKLY_RATE: Record<Goal, number> = { cut: -0.5, maintain: 0, bulk: 0.25 };
+const GOAL_WEEKLY_RATE: Record<Goal, number> = {
+  lose_weight: -0.5,
+  lose_slow: -0.25,
+  maintain: 0,
+  light_bulk: 0.2,
+  bulk: 0.25,
+};
 
 const WINDOW_DAYS = 28; // guardiamo le ultime ~4 settimane
 const MIN_POINTS = 3; // servono almeno 3 pesate
