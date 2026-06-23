@@ -16,7 +16,7 @@ export function Sparkline({ values, height = 80, color }: Props) {
   const { colors, styles } = useThemed(makeStyles);
   const stroke = color ?? colors.calories;
   if (values.length < 2) {
-    return <Text style={styles.empty}>Servono almeno 2 misure per il grafico.</Text>;
+    return <Text style={styles.empty}>Need at least 2 measurements for the chart.</Text>;
   }
   const min = Math.min(...values);
   const max = Math.max(...values);

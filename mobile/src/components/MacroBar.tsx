@@ -29,7 +29,7 @@ export function MacroBar({ label, current, target, color, emphasized }: Props) {
       </View>
       <ProgressBar progress={target ? current / target : 0} color={color} height={emphasized ? 12 : 8} />
       <Text style={styles.remaining}>
-        {remaining > 0 ? `${remaining} g rimanenti` : "obiettivo raggiunto ✅"}
+        {remaining > 0 ? `${remaining} g rimanenti` : "goal reached ✅"}
       </Text>
     </View>
   );

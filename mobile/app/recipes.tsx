@@ -64,19 +64,19 @@ export default function RecipesScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader title="Ricette / Pasti frequenti" />
+      <ScreenHeader title="Recipes" />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Nuova ricetta</Text>
+          <Text style={styles.cardTitle}>New recipe</Text>
           <TextInput
             style={styles.input}
-            placeholder="Nome (es. Pollo e riso)"
+            placeholder="Name (e.g. Chicken and rice)"
             placeholderTextColor={colors.textMuted}
             value={name}
             onChangeText={setName}
           />
 
-          <Text style={styles.sub}>Ingredienti</Text>
+          <Text style={styles.sub}>Ingredients</Text>
           {items.map((it, idx) => (
             <View key={idx} style={styles.itemRow}>
               <Text style={styles.itemText}>
@@ -88,11 +88,11 @@ export default function RecipesScreen() {
             </View>
           ))}
 
-          <Text style={styles.sub}>Aggiungi ingrediente</Text>
+          <Text style={styles.sub}>Add ingredient</Text>
           {foods.isLoading ? (
             <ActivityIndicator color={colors.protein} />
           ) : (foods.data ?? []).length === 0 ? (
-            <Text style={styles.empty}>Crea prima qualche alimento.</Text>
+            <Text style={styles.empty}>Create some foods first.</Text>
           ) : (
             <View style={{ gap: 6 }}>
               {(foods.data ?? []).map((food) => {
@@ -112,13 +112,13 @@ export default function RecipesScreen() {
             </View>
           )}
           <View style={styles.addRow}>
-            <NumberField label="Grammi" value={grams} onChangeText={setGrams} unit="g" />
+            <NumberField label="Grams" value={grams} onChangeText={setGrams} unit="g" />
             <Pressable
               onPress={addItem}
               disabled={pickedFood == null}
               style={[styles.addBtn, pickedFood == null && styles.disabled]}
             >
-              <Text style={styles.addText}>+ Ingr.</Text>
+              <Text style={styles.addText}>+ Item</Text>
             </Pressable>
           </View>
 
@@ -128,27 +128,27 @@ export default function RecipesScreen() {
             style={[styles.btn, (!canSave || createRecipe.isPending) && styles.disabled]}
           >
             {createRecipe.isPending ? (
-              <ActivityIndicator color="#06210f" />
+              <ActivityIndicator color={colors.onPrimary} />
             ) : (
-              <Text style={styles.btnText}>Salva ricetta</Text>
+              <Text style={styles.btnText}>Save recipe</Text>
             )}
           </Pressable>
         </View>
 
-        <Text style={styles.listTitle}>Le tue ricette</Text>
+        <Text style={styles.listTitle}>Your recipes</Text>
         {recipes.isLoading ? (
           <ActivityIndicator color={colors.protein} />
         ) : recipes.isError ? (
-          <Text style={styles.error}>Impossibile caricare.</Text>
+          <Text style={styles.error}>Could not load.</Text>
         ) : (recipes.data ?? []).length === 0 ? (
-          <Text style={styles.empty}>Ancora nessuna ricetta.</Text>
+          <Text style={styles.empty}>No recipes yet.</Text>
         ) : (
           (recipes.data ?? []).map((r) => (
             <View key={r.id} style={styles.recipeRow}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.recipeName}>{r.name}</Text>
                 <Text style={styles.recipeMeta}>
-                  {r.itemCount} ingredienti · {r.totals.kcal} kcal · P {r.totals.protein_g}g
+                  {r.itemCount} items · {r.totals.kcal} kcal · P {r.totals.protein_g}g
                 </Text>
               </View>
               <Pressable onPress={() => deleteRecipe.mutate(r.id)} hitSlop={10}>
@@ -218,7 +218,7 @@ const makeStyles = (colors: ThemeColors) =>
   addText: { color: "#fff", fontWeight: "800" },
   btn: { backgroundColor: colors.calories, borderRadius: 12, paddingVertical: 14, alignItems: "center", marginTop: 4 },
   disabled: { opacity: 0.4 },
-  btnText: { color: "#06210f", fontSize: 15, fontWeight: "800" },
+  btnText: { color: colors.onPrimary, fontSize: 15, fontWeight: "800" },
   listTitle: { color: colors.text, fontSize: 18, fontWeight: "800", marginTop: 6 },
   empty: { color: colors.textMuted, fontSize: 13 },
   recipeRow: {

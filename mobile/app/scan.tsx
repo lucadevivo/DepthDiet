@@ -28,15 +28,15 @@ export default function ScanScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader title="Scansiona barcode" />
+      <ScreenHeader title="Scan barcode" />
 
       {!permission ? (
         <ActivityIndicator color={colors.protein} style={{ marginTop: 24 }} />
       ) : !permission.granted ? (
         <View style={styles.center}>
-          <Text style={styles.info}>Serve il permesso fotocamera per scansionare i prodotti.</Text>
+          <Text style={styles.info}>Camera permission is needed to scan products.</Text>
           <Pressable onPress={requestPermission} style={styles.btn}>
-            <Text style={styles.btnText}>Consenti fotocamera</Text>
+            <Text style={styles.btnText}>Allow camera</Text>
           </Pressable>
         </View>
       ) : (
@@ -44,7 +44,7 @@ export default function ScanScreen() {
           <View style={styles.cameraBox}>
             {code ? (
               <View style={styles.cameraPlaceholder}>
-                <Text style={styles.code}>Codice: {code}</Text>
+                <Text style={styles.code}>Code: {code}</Text>
               </View>
             ) : (
               <CameraView
@@ -59,11 +59,11 @@ export default function ScanScreen() {
 
           <View style={styles.result}>
             {!code ? (
-              <Text style={styles.hint}>Inquadra il codice a barre del prodotto.</Text>
+              <Text style={styles.hint}>Point at the product barcode.</Text>
             ) : lookup.isLoading ? (
               <ActivityIndicator color={colors.protein} />
             ) : lookup.isError ? (
-              <Text style={styles.error}>Errore di rete durante il lookup. Riprova.</Text>
+              <Text style={styles.error}>Network error during lookup. Try again.</Text>
             ) : lookup.data ? (
               <OffProductRow
                 product={lookup.data}
@@ -72,16 +72,16 @@ export default function ScanScreen() {
               />
             ) : (
               <View style={{ gap: 8 }}>
-                <Text style={styles.info}>Prodotto non trovato su Open Food Facts.</Text>
+                <Text style={styles.info}>Product not found on Open Food Facts.</Text>
                 <Link href="/foods" style={styles.link}>
-                  Inseriscilo manualmente negli Alimenti →
+                  Add it manually in Foods →
                 </Link>
               </View>
             )}
 
             {code ? (
               <Pressable onPress={() => setCode(null)} style={[styles.btn, styles.again]}>
-                <Text style={styles.btnText}>Scansiona di nuovo</Text>
+                <Text style={styles.btnText}>Scan again</Text>
               </Pressable>
             ) : null}
           </View>

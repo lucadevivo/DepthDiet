@@ -39,20 +39,20 @@ type CaptureSource = ImageSource | "lidar";
 
 type RefChoice = ReferenceType | "none";
 const REFERENCE_OPTIONS: { value: RefChoice; label: string }[] = [
-  { value: "none", label: "Nessuno" },
-  { value: "card_iso", label: "Carta" },
+  { value: "none", label: "None" },
+  { value: "card_iso", label: "Card" },
   { value: "coin_1eur", label: "1€" },
   { value: "coin_2eur", label: "2€" },
 ];
 const REF_HINT: Record<ReferenceType, string> = {
-  card_iso: "righello: carta",
-  coin_1eur: "righello: moneta 1€",
-  coin_2eur: "righello: moneta 2€",
+  card_iso: "ruler: card",
+  coin_1eur: "ruler: 1€ coin",
+  coin_2eur: "ruler: 2€ coin",
 };
 const QUALITY_HINT: Record<"high" | "medium" | "low", string> = {
-  high: "qualità alta",
-  medium: "qualità media",
-  low: "qualità bassa",
+  high: "high quality",
+  medium: "medium quality",
+  low: "low quality",
 };
 
 type Phase = "pick" | "review";
@@ -170,7 +170,7 @@ export default function AnalyzeScreen() {
       }
       const result = await analyze.mutateAsync(body);
       if (result.items.length === 0) {
-        setError("Nessun alimento riconosciuto. Riprova con una foto più nitida o aggiungi del contesto.");
+        setError("No food recognized. Try a sharper photo or add some context.");
         return;
       }
       setItems(toEditItems(result));
@@ -181,11 +181,11 @@ export default function AnalyzeScreen() {
       if (e instanceof LidarCancelled) return; // annullato dall'utente
       if (e instanceof ImagePickCancelled) {
         if (e.reason === "permission_denied") {
-          setError("Serve il permesso per fotocamera/galleria. Abilitalo dalle impostazioni.");
+          setError("Camera/gallery permission needed. Enable it in Settings.");
         }
         return; // annullato dall'utente: nessun errore da mostrare
       }
-      setError("Analisi fallita. Controlla la connessione e riprova.");
+      setError("Analysis failed. Check your connection and try again.");
     }
   };
 
@@ -207,7 +207,7 @@ export default function AnalyzeScreen() {
       });
       patch(item.key, { foodId: food.id, savedAsFood: true });
     } catch {
-      setError("Salvataggio alimento fallito. Riprova.");
+      setError("Could not save the food. Try again.");
     } finally {
       setSavingKey(null);
     }
@@ -234,20 +234,20 @@ export default function AnalyzeScreen() {
       }
       router.back();
     } catch {
-      setError("Errore nel salvataggio del diario. Alcune voci potrebbero non essere state aggiunte.");
+      setError("Could not save to the diary. Some entries may not have been added.");
     }
   };
 
   if (phase === "pick") {
     return (
       <View style={styles.screen}>
-        <ScreenHeader title="Scansiona pasto" />
+        <ScreenHeader title="Scan meal" />
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <Text style={styles.lead}>
-            Fotografa il piatto: l'IA stima gli alimenti e li abbina ai tuoi Alimenti Personali.
+            Photograph the plate: the AI estimates the foods and matches them to your Foods.
           </Text>
 
-          <Text style={styles.label}>Pasto</Text>
+          <Text style={styles.label}>Meal</Text>
           <MealPicker
             meals={meals.data ?? []}
             loading={meals.isLoading}
@@ -255,27 +255,27 @@ export default function AnalyzeScreen() {
             onChange={setMealId}
           />
 
-          <Text style={styles.label}>Contesto (opzionale)</Text>
+          <Text style={styles.label}>Context (optional)</Text>
           <TextInput
             style={styles.input}
-            placeholder="Es. ci sono 30g di parmigiano sotto"
+            placeholder="E.g. there are 30g of parmesan underneath"
             placeholderTextColor={colors.textMuted}
             value={contextText}
             onChangeText={setContextText}
             multiline
           />
 
-          <Text style={styles.label}>Oggetto di riferimento (opzionale)</Text>
+          <Text style={styles.label}>Reference object (optional)</Text>
           <SegmentedControl options={REFERENCE_OPTIONS} value={reference} onChange={setReference} />
           <Text style={styles.hintSmall}>
-            Metti una carta o una moneta accanto al piatto: l'IA la usa come righello per
-            stimare meglio le porzioni.
+            Place a card or a coin next to the plate: the AI uses it as a ruler to
+            estimate portions better.
           </Text>
 
           {busy ? (
             <View style={styles.busy}>
               <ActivityIndicator color={colors.calories} />
-              <Text style={styles.busyText}>Analisi in corso…</Text>
+              <Text style={styles.busyText}>Analyzing…</Text>
             </View>
           ) : (
             <View style={{ gap: 10, marginTop: 8 }}>
@@ -284,16 +284,16 @@ export default function AnalyzeScreen() {
                 onPress={() => startAnalysis(lidarOn ? "lidar" : "camera")}
               >
                 <Icon name="camera" size={20} color={colors.onPrimary} />
-                <Text style={styles.primaryText}>Scatta foto</Text>
+                <Text style={styles.primaryText}>Take photo</Text>
               </Pressable>
               {lidarOn ? (
                 <Text style={styles.hintSmall}>
-                  Sul tuo iPhone lo scatto misura anche il volume del cibo col LiDAR, in automatico.
+                  On your iPhone the shot also measures the food volume with LiDAR, automatically.
                 </Text>
               ) : null}
               <Pressable style={styles.secondaryBtn} onPress={() => startAnalysis("library")}>
                 <Icon name="gallery" size={18} color={colors.text} />
-                <Text style={styles.secondaryText}>Scegli dalla galleria</Text>
+                <Text style={styles.secondaryText}>Choose from gallery</Text>
               </Pressable>
             </View>
           )}
@@ -322,10 +322,10 @@ export default function AnalyzeScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader title="Conferma il pasto" />
+      <ScreenHeader title="Confirm meal" />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Text style={styles.lead}>
-          Controlla gli abbinamenti e le quantità, poi aggiungi al diario (
+          Check the matches and amounts, then add to the diary (
           {meals.data?.find((m) => m.id === mealId)?.name ?? "—"}).
         </Text>
         {usedHint ? <Text style={styles.hint}>{usedHint}</Text> : null}
@@ -351,7 +351,7 @@ export default function AnalyzeScreen() {
                   <Text style={styles.name}>{it.name}</Text>
                   {it.foodId != null ? (
                     <Text style={styles.matched}>
-                      {it.savedAsFood ? "✓ salvato come Alimento" : "✓ abbinato a un tuo Alimento"}
+                      {it.savedAsFood ? "✓ saved as Food" : "✓ matched to one of your Foods"}
                     </Text>
                   ) : (
                     <Text style={styles.estimated}>
@@ -363,13 +363,13 @@ export default function AnalyzeScreen() {
 
               <View style={styles.cardBody}>
                 <NumberField
-                  label="Grammi"
+                  label="Grams"
                   value={it.gramsStr}
                   onChangeText={(t) => patch(it.key, { gramsStr: t })}
                   unit="g"
                 />
                 <Text style={styles.macros}>
-                  {m.kcal} kcal · P {m.protein_g} · C {m.carbs_g} · G {m.fat_g}
+                  {m.kcal} kcal · P {m.protein_g} · C {m.carbs_g} · F {m.fat_g}
                 </Text>
               </View>
 
@@ -385,7 +385,7 @@ export default function AnalyzeScreen() {
                     <View style={styles.linkRow}>
                       <Icon name="add" size={16} color={colors.water} />
                       <Text style={styles.linkText}>
-                        Salva come Alimento (così la prossima volta lo abbina)
+                        Save as Food (matched automatically next time)
                       </Text>
                     </View>
                   )}
@@ -396,10 +396,10 @@ export default function AnalyzeScreen() {
         })}
 
         <View style={styles.totalCard}>
-          <Text style={styles.totalLabel}>Totale selezione</Text>
+          <Text style={styles.totalLabel}>Selected total</Text>
           <Text style={styles.totalKcal}>{total.kcal} kcal</Text>
           <Text style={styles.totalMacros}>
-            P {round(total.protein_g, 1)} · C {round(total.carbs_g, 1)} · G {round(total.fat_g, 1)}
+            P {round(total.protein_g, 1)} · C {round(total.carbs_g, 1)} · F {round(total.fat_g, 1)}
           </Text>
         </View>
 
@@ -411,12 +411,12 @@ export default function AnalyzeScreen() {
           {addEntry.isPending ? (
             <ActivityIndicator color={colors.onPrimary} />
           ) : (
-            <Text style={styles.primaryText}>Aggiungi al diario</Text>
+            <Text style={styles.primaryText}>Add to diary</Text>
           )}
         </Pressable>
         <Pressable style={styles.secondaryBtn} onPress={() => setPhase("pick")}>
           <Icon name="back" size={18} color={colors.text} />
-          <Text style={styles.secondaryText}>Rifai la foto</Text>
+          <Text style={styles.secondaryText}>Retake photo</Text>
         </Pressable>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}

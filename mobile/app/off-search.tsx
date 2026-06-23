@@ -35,7 +35,7 @@ export default function OffSearchScreen() {
       <View style={styles.searchBar}>
         <TextInput
           style={styles.input}
-          placeholder="Cerca un prodotto (es. fagioli borlotti)"
+          placeholder="Search a product (e.g. black beans)"
           placeholderTextColor={colors.textMuted}
           value={term}
           onChangeText={setTerm}
@@ -43,19 +43,19 @@ export default function OffSearchScreen() {
           returnKeyType="search"
         />
         <Pressable onPress={() => setSubmitted(term.trim())} style={styles.searchBtn}>
-          <Text style={styles.searchBtnText}>Cerca</Text>
+          <Text style={styles.searchBtnText}>Search</Text>
         </Pressable>
       </View>
 
       <Link href="/scan" style={styles.scanLink}>
-        📷 oppure scansiona un codice a barre
+        📷 or scan a barcode
       </Link>
 
       {results.isFetching ? (
         <ActivityIndicator color={colors.protein} style={{ marginTop: 24 }} />
       ) : results.isError ? (
         <Text style={styles.error}>
-          Errore nella ricerca su Open Food Facts. Riprova tra poco.
+          Open Food Facts search failed. Try again shortly.
         </Text>
       ) : (
         <FlatList
@@ -72,9 +72,9 @@ export default function OffSearchScreen() {
           )}
           ListEmptyComponent={
             submitted.length >= 2 ? (
-              <Text style={styles.empty}>Nessun risultato.</Text>
+              <Text style={styles.empty}>No results.</Text>
             ) : (
-              <Text style={styles.empty}>Digita almeno 2 caratteri e premi Cerca.</Text>
+              <Text style={styles.empty}>Type at least 2 characters and press Search.</Text>
             )
           }
         />

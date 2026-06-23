@@ -77,7 +77,7 @@ export default function SetupScreen() {
   if (!loaded) {
     return (
       <View style={styles.screen}>
-        <ScreenHeader title="Impostazioni" />
+        <ScreenHeader title="Settings" />
         <ActivityIndicator color={colors.protein} style={{ marginTop: 32 }} />
       </View>
     );
@@ -85,16 +85,16 @@ export default function SetupScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader title="Impostazioni" />
+      <ScreenHeader title="Settings" />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Text style={styles.lead}>
-          Credenziali di accesso al backend. Restano nel Keychain del telefono, mai nel bundle.
+          Backend access credentials. They stay in the phone Keychain, never in the bundle.
         </Text>
 
-        <Text style={styles.label}>Bearer token (richiesto)</Text>
+        <Text style={styles.label}>Bearer token (required)</Text>
         <TextInput
           style={styles.input}
-          placeholder="Incolla APP_BEARER_TOKEN"
+          placeholder="Paste APP_BEARER_TOKEN"
           placeholderTextColor={colors.textMuted}
           value={bearer}
           onChangeText={setBearer}
@@ -103,11 +103,11 @@ export default function SetupScreen() {
           secureTextEntry
         />
 
-        <Text style={styles.section}>Cloudflare Access (opzionale, solo in produzione)</Text>
+        <Text style={styles.section}>Cloudflare Access (optional, production only)</Text>
         <Text style={styles.label}>CF-Access-Client-Id</Text>
         <TextInput
           style={styles.input}
-          placeholder="Lascia vuoto in dev"
+          placeholder="Leave empty in dev"
           placeholderTextColor={colors.textMuted}
           value={cfId}
           onChangeText={setCfId}
@@ -117,7 +117,7 @@ export default function SetupScreen() {
         <Text style={styles.label}>CF-Access-Client-Secret</Text>
         <TextInput
           style={styles.input}
-          placeholder="Lascia vuoto in dev"
+          placeholder="Leave empty in dev"
           placeholderTextColor={colors.textMuted}
           value={cfSecret}
           onChangeText={setCfSecret}
@@ -127,21 +127,21 @@ export default function SetupScreen() {
         />
 
         <Pressable style={[styles.primaryBtn, saving && styles.disabled]} disabled={saving} onPress={onSave}>
-          {saving ? <ActivityIndicator color="#06210f" /> : <Text style={styles.primaryText}>Salva credenziali</Text>}
+          {saving ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.primaryText}>Save credentials</Text>}
         </Pressable>
-        {saved ? <Text style={styles.ok}>✓ Salvate nel Keychain.</Text> : null}
+        {saved ? <Text style={styles.ok}>✓ Saved to Keychain.</Text> : null}
 
         <Pressable style={styles.secondaryBtn} onPress={onTest}>
           {test === "testing" ? (
             <ActivityIndicator color={colors.text} />
           ) : (
-            <Text style={styles.secondaryText}>Verifica connessione</Text>
+            <Text style={styles.secondaryText}>Test connection</Text>
           )}
         </Pressable>
-        {test === "ok" ? <Text style={styles.ok}>✓ Backend raggiungibile e autenticazione ok.</Text> : null}
+        {test === "ok" ? <Text style={styles.ok}>✓ Backend reachable and authentication ok.</Text> : null}
         {test === "fail" ? (
           <Text style={styles.error}>
-            Connessione fallita. Controlla token, che il backend sia attivo e di essere sulla stessa rete.
+            Connection failed. Check the token, that the backend is running and you are on the same network.
           </Text>
         ) : null}
       </ScrollView>

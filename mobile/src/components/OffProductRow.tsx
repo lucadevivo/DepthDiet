@@ -34,11 +34,11 @@ export function OffProductRow({ product, status, onImport }: Props) {
 function ImportButton({ status, onPress }: { status: ImportStatus; onPress: () => void }) {
   const { colors, styles } = useThemed(makeStyles);
   if (status === "pending") return <ActivityIndicator color={colors.protein} />;
-  if (status === "done") return <Text style={[styles.tag, { color: colors.calories }]}>✓ Importato</Text>;
-  if (status === "duplicate") return <Text style={[styles.tag, { color: colors.textMuted }]}>Già presente</Text>;
+  if (status === "done") return <Text style={[styles.tag, { color: colors.calories }]}>✓ Imported</Text>;
+  if (status === "duplicate") return <Text style={[styles.tag, { color: colors.textMuted }]}>Already added</Text>;
   return (
     <Pressable onPress={onPress} style={styles.btn}>
-      <Text style={styles.btnText}>{status === "error" ? "Riprova" : "Importa"}</Text>
+      <Text style={styles.btnText}>{status === "error" ? "Retry" : "Import"}</Text>
     </Pressable>
   );
 }

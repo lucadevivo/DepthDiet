@@ -43,28 +43,28 @@ export default function WeightScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader title="Peso" />
+      <ScreenHeader title="Weight" />
       <ScrollView contentContainerStyle={styles.content}>
         {/* Registrazione */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Registra il peso di oggi</Text>
+          <Text style={styles.cardTitle}>Log today's weight</Text>
           <View style={styles.logRow}>
-            <NumberField label="Peso" value={w} onChangeText={setW} unit="kg" />
+            <NumberField label="Weight" value={w} onChangeText={setW} unit="kg" />
             <Pressable
               onPress={onLog}
               disabled={!valid || logWeight.isPending}
               style={[styles.btn, (!valid || logWeight.isPending) && styles.disabled]}
             >
               {logWeight.isPending ? (
-                <ActivityIndicator color="#06210f" />
+                <ActivityIndicator color={colors.onPrimary} />
               ) : (
-                <Text style={styles.btnText}>Registra</Text>
+                <Text style={styles.btnText}>Log</Text>
               )}
             </Pressable>
           </View>
         </View>
 
-        {/* TDEE adattivo */}
+        {/* Adaptive TDEE */}
         <AdaptiveCard
           loading={adaptive.isLoading}
           error={adaptive.isError}
@@ -76,7 +76,7 @@ export default function WeightScreen() {
 
         {/* Trend */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Andamento</Text>
+          <Text style={styles.cardTitle}>Trend</Text>
           {weights.isLoading ? (
             <ActivityIndicator color={colors.protein} />
           ) : (
@@ -85,9 +85,9 @@ export default function WeightScreen() {
         </View>
 
         {/* Storico misure */}
-        <Text style={styles.listTitle}>Misure</Text>
+        <Text style={styles.listTitle}>Measurements</Text>
         {recent.length === 0 ? (
-          <Text style={styles.empty}>Ancora nessuna misura.</Text>
+          <Text style={styles.empty}>No measurements yet.</Text>
         ) : (
           recent.map((entry) => (
             <View key={entry.id} style={styles.row}>
@@ -122,16 +122,16 @@ function AdaptiveCard({
   const { colors, styles } = useThemed(makeStyles);
   return (
     <View style={[styles.card, styles.adaptiveCard]}>
-      <Text style={styles.cardTitle}>TDEE adattivo</Text>
+      <Text style={styles.cardTitle}>Adaptive TDEE</Text>
       {loading ? (
         <ActivityIndicator color={colors.protein} />
       ) : error ? (
-        <Text style={styles.errorText}>Imposta gli obiettivi nel Calcolatore per il TDEE adattivo.</Text>
+        <Text style={styles.errorText}>Imposta gli obiettivi nel Calcolatore per il Adaptive TDEE.</Text>
       ) : data ? (
         <>
           <View style={styles.trendRow}>
-            <Trend label="Trend reale" value={data.trendKgPerWeek != null ? `${data.trendKgPerWeek} kg/sett` : "—"} />
-            <Trend label="Atteso" value={`${data.expectedKgPerWeek} kg/sett`} />
+            <Trend label="Actual trend" value={data.trendKgPerWeek != null ? `${data.trendKgPerWeek} kg/week` : "—"} />
+            <Trend label="Expected" value={`${data.expectedKgPerWeek} kg/week`} />
           </View>
           <Text style={styles.reason}>{data.reason}</Text>
           {data.hasEnoughData && data.adjustmentKcal !== 0 ? (
@@ -140,13 +140,13 @@ function AdaptiveCard({
                 <ActivityIndicator color="#fff" />
               ) : (
                 <Text style={styles.applyText}>
-                  Applica → {data.suggestedTargetCalories} kcal
+                  Apply → {data.suggestedTargetCalories} kcal
                 </Text>
               )}
             </Pressable>
           ) : null}
           {applied != null ? (
-            <Text style={styles.success}>Obiettivo aggiornato ({applied > 0 ? "+" : ""}{applied} kcal).</Text>
+            <Text style={styles.success}>Goal updated ({applied > 0 ? "+" : ""}{applied} kcal).</Text>
           ) : null}
         </>
       ) : null}
@@ -181,7 +181,7 @@ const makeStyles = (colors: ThemeColors) =>
   logRow: { flexDirection: "row", alignItems: "flex-end", gap: 10 },
   btn: { backgroundColor: colors.calories, borderRadius: 12, paddingVertical: 14, paddingHorizontal: 20, alignItems: "center" },
   disabled: { opacity: 0.5 },
-  btnText: { color: "#06210f", fontSize: 15, fontWeight: "800" },
+  btnText: { color: colors.onPrimary, fontSize: 15, fontWeight: "800" },
 
   trendRow: { flexDirection: "row", gap: 12 },
   trendBox: { flex: 1, backgroundColor: colors.surfaceAlt, borderRadius: 12, padding: 12 },

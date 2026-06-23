@@ -56,7 +56,7 @@ export default function FoodsScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader title="Alimenti Personali" />
+      <ScreenHeader title="Foods" />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.offRow}>
           <Link href="/off-search" asChild>
@@ -66,34 +66,34 @@ export default function FoodsScreen() {
           </Link>
           <Link href="/scan" asChild>
             <Pressable style={styles.offBtn}>
-              <Text style={styles.offText}>📷 Scansiona</Text>
+              <Text style={styles.offText}>📷 Scan</Text>
             </Pressable>
           </Link>
         </View>
 
         <View style={styles.formCard}>
-          <Text style={styles.formTitle}>Nuovo alimento (valori per 100g)</Text>
+          <Text style={styles.formTitle}>New food (per 100g)</Text>
           <TextInput
             style={styles.input}
-            placeholder="Nome (es. Fiocchi d'avena)"
+            placeholder="Name (e.g. Oats)"
             placeholderTextColor={colors.textMuted}
             value={name}
             onChangeText={setName}
           />
           <TextInput
             style={styles.input}
-            placeholder="Brand (opzionale)"
+            placeholder="Brand (optional)"
             placeholderTextColor={colors.textMuted}
             value={brand}
             onChangeText={setBrand}
           />
           <View style={styles.row}>
             <NumberField label="Kcal" value={kcal} onChangeText={setKcal} />
-            <NumberField label="Proteine" value={p} onChangeText={setP} unit="g" />
+            <NumberField label="Protein" value={p} onChangeText={setP} unit="g" />
           </View>
           <View style={styles.row}>
-            <NumberField label="Carbo" value={c} onChangeText={setC} unit="g" />
-            <NumberField label="Grassi" value={f} onChangeText={setF} unit="g" />
+            <NumberField label="Carbs" value={c} onChangeText={setC} unit="g" />
+            <NumberField label="Fat" value={f} onChangeText={setF} unit="g" />
           </View>
           <Pressable
             onPress={onCreate}
@@ -101,21 +101,21 @@ export default function FoodsScreen() {
             style={[styles.btn, (!valid || createFood.isPending) && styles.disabled]}
           >
             {createFood.isPending ? (
-              <ActivityIndicator color="#06210f" />
+              <ActivityIndicator color={colors.onPrimary} />
             ) : (
-              <Text style={styles.btnText}>Salva alimento</Text>
+              <Text style={styles.btnText}>Save food</Text>
             )}
           </Pressable>
-          {createFood.isError ? <Text style={styles.error}>Errore nel salvataggio.</Text> : null}
+          {createFood.isError ? <Text style={styles.error}>Could not save.</Text> : null}
         </View>
 
-        <Text style={styles.listTitle}>I tuoi alimenti</Text>
+        <Text style={styles.listTitle}>Your foods</Text>
         {foods.isLoading ? (
           <ActivityIndicator color={colors.protein} />
         ) : foods.isError ? (
-          <Text style={styles.error}>Impossibile caricare. Verifica backend/credenziali.</Text>
+          <Text style={styles.error}>Could not load. Check backend/credentials.</Text>
         ) : (foods.data ?? []).length === 0 ? (
-          <Text style={styles.empty}>Ancora nessun alimento.</Text>
+          <Text style={styles.empty}>No foods yet.</Text>
         ) : (
           (foods.data ?? []).map((food) => (
             <View key={food.id} style={styles.foodRow}>
@@ -177,7 +177,7 @@ const makeStyles = (colors: ThemeColors) =>
   row: { flexDirection: "row", gap: 10 },
   btn: { backgroundColor: colors.calories, borderRadius: 12, paddingVertical: 14, alignItems: "center" },
   disabled: { opacity: 0.5 },
-  btnText: { color: "#06210f", fontSize: 15, fontWeight: "800" },
+  btnText: { color: colors.onPrimary, fontSize: 15, fontWeight: "800" },
 
   listTitle: { color: colors.text, fontSize: 18, fontWeight: "800", marginTop: 6 },
   empty: { color: colors.textMuted, fontSize: 13 },

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { ScrollView, View, Text, Pressable, ActivityIndicator, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import { useTheme, useThemed } from "../../src/theme/ThemeProvider";
 import type { ThemeColors } from "../../src/theme/colors";
 import { NumberField } from "../../src/components/NumberField";
@@ -11,6 +11,7 @@ import { StatStrip } from "../../src/components/StatStrip";
 import { MetricCard } from "../../src/components/MetricCard";
 import { Icon } from "../../src/components/Icon";
 import { useProfileQuery, useUpdateProfile } from "../../src/hooks/useProfile";
+import { useAdaptiveQuery } from "../../src/hooks/useWeight";
 import { bodyMetricsFromProfile } from "../../src/lib/bodyMetrics";
 import {
   ACTIVITY_OPTIONS,
@@ -109,6 +110,7 @@ export default function ProfileScreen() {
         <>
           <ProfileStats profile={profileQuery.data} />
           <Metrics profile={profileQuery.data} />
+          {profileQuery.data?.target_calories != null ? <AdaptiveTdee /> : null}
 
           {/* Catalogo cibi e ricette (spostato qui dal Diary). */}
           <View style={styles.catalog}>
@@ -205,6 +207,28 @@ function ProfileStats({ profile }: { profile: Profile | undefined }) {
         { label: "Gender", value: sexLabel },
         { label: "Age", value: profile.age != null ? `${profile.age}` : "—" },
       ]}
+    />
+  );
+}
+
+/** TDEE adattivo (dal trend del peso): riepilogo + link alla schermata Weight. */
+function AdaptiveTdee() {
+  const { colors } = useTheme();
+  const router = useRouter();
+  const adaptive = useAdaptiveQuery();
+  const d = adaptive.data;
+  const value = !d
+    ? "—"
+    : d.hasEnoughData && d.trendKgPerWeek != null
+      ? `${d.trendKgPerWeek} kg/week`
+      : "Log your weight";
+  return (
+    <MetricCard
+      icon="weight"
+      iconColor={colors.water}
+      label="Adaptive TDEE"
+      value={value}
+      onPress={() => router.push("/weight")}
     />
   );
 }
