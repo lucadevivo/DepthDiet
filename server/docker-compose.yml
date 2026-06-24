@@ -1,0 +1,33 @@
+# Deploy del backend food-tracker (single-user) dietro il Cloudflare Tunnel.
+# La porta è pubblicata SOLO su 127.0.0.1: l'API non è esposta sulla LAN/Internet
+# direttamente — ci arriva il Cloudflare Tunnel, che instrada il sottodominio
+# (es. foodtracker.webluca.app) verso http://localhost:8787. La protezione è il
+# bearer token applicativo (APP_BEARER_TOKEN, fail-closed).
+services:
+  food-tracker:
+    build: .
+    image: food-tracker-server
+    container_name: food-tracker
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PORT: "8787"
+      DATABASE_PATH: data/food-tracker.sqlite
+      BACKUP_DIR: backups
+    ports:
+      - "127.0.0.1:8787:8787"
+    volumes:
+      - food-tracker-data:/app/data
+      - food-tracker-backups:/app/backups
+    healthcheck:
+      test:
+        ["CMD", "node", "-e", "fetch('http://localhost:8787/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  food-tracker-data:
+  food-tracker-backups:

@@ -55,12 +55,29 @@ export function buildMealPrompt(input: AnalyzeInput, matched: CustomFood[]): str
   }
 
   if (input.reference?.type != null) {
+    // Riferimento esplicito (compatibilità con vecchie richieste): l'utente ha
+    // dichiarato l'oggetto presente in foto.
     lines.push(
       "",
       `In foto è presente un OGGETTO DI RIFERIMENTO di dimensioni note: ${REFERENCE_LABEL[input.reference.type]}.`,
       "Usalo come righello: misura le dimensioni del cibo rispetto al riferimento per",
       "stimare le porzioni reali (e quindi i grammi) con più precisione.",
       "Non conteggiare l'oggetto di riferimento tra gli alimenti.",
+    );
+  } else {
+    // Auto-rilevamento: nessun oggetto dichiarato. Se ne trovi uno di dimensioni
+    // note, usalo da solo come scala — senza che l'utente debba indicarlo.
+    lines.push(
+      "",
+      "RILEVAMENTO SCALA (automatico): cerca nella foto un oggetto di dimensioni note",
+      "utilizzabile come righello e, se presente, usalo per stimare la scala reale del",
+      "cibo e quindi i grammi con più precisione. Dimensioni di riferimento note:",
+      "- moneta da 1 euro: diametro 23.25 mm; moneta da 2 euro: diametro 25.75 mm;",
+      "- carta bancomat/credito (ISO ID-1): 85.6 × 54 mm;",
+      "- forchetta/cucchiaio da tavola standard: lunghezza ~19-20 cm;",
+      "- piatto piano standard: diametro ~26-27 cm; sottopiatto/piattino: ~15-19 cm.",
+      "Scegli il riferimento più affidabile presente e non conteggiarlo tra gli alimenti.",
+      "Se non c'è alcun riferimento utile, stima le porzioni dall'aspetto del cibo.",
     );
   }
 

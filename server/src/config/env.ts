@@ -56,8 +56,9 @@ export const env = {
   /** Fase 1d — Gemini. La chiave vive SOLO qui sul backend, mai nell'app. */
   gemini: {
     apiKey: optional("GEMINI_API_KEY", ""),
-    // Verificato sul free tier (giugno 2026): multimodale + JSON mode. Configurabile.
-    model: optional("GEMINI_MODEL", "gemini-2.5-flash"),
+    // flash-lite: multimodale + JSON mode con quota giornaliera molto più alta sul
+    // free tier (la 2.5-flash si esauriva). Configurabile via GEMINI_MODEL.
+    model: optional("GEMINI_MODEL", "gemini-3.1-flash-lite"),
     get enabled(): boolean {
       return this.apiKey !== "";
     },

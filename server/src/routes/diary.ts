@@ -3,6 +3,8 @@ import {
   addDiaryEntry,
   deleteDiaryEntry,
   getDiaryByDate,
+  getDiaryEntryById,
+  updateDiaryEntry,
   type NewDiaryEntry,
 } from "../repositories/diary.js";
 import { getCustomFoodById } from "../repositories/customFoods.js";
@@ -77,6 +79,52 @@ diaryRouter.post("/", (req, res) => {
     return;
   }
   res.status(201).json(addDiaryEntry(entry));
+});
+
+/**
+ * PUT /api/diary/:id — modifica la grammatura di una voce esistente, ricalcolando
+ * i macro. Per le voci legate a un Alimento Personale si ricalcola dai valori reali
+ * del cibo; per le altre (scan/manuale/ricetta) si scala proporzionalmente lo
+ * snapshot salvato. Body: { grams }.
+ */
+diaryRouter.put("/:id", (req, res) => {
+  const id = Number(req.params.id);
+  const entry = Number.isInteger(id) ? getDiaryEntryById(id) : undefined;
+  if (!entry) {
+    res.status(404).json({ error: "not_found", detail: "voce inesistente" });
+    return;
+  }
+
+  const b = (req.body ?? {}) as Record<string, unknown>;
+  const grams = typeof b.grams === "number" ? b.grams : NaN;
+  if (!Number.isFinite(grams) || grams <= 0) {
+    res.status(400).json({ error: "bad_request", detail: "grams (>0) richiesto" });
+    return;
+  }
+
+  let macros: Macros;
+  if (entry.custom_food_id != null) {
+    const food = getCustomFoodById(entry.custom_food_id);
+    if (!food) {
+      res.status(400).json({ error: "bad_request", detail: "alimento collegato inesistente" });
+      return;
+    }
+    macros = scaleFood(food, grams);
+  } else if (entry.grams != null && entry.grams > 0) {
+    // Scala lo snapshot proporzionalmente (ricetta/scan/manuale con grammatura).
+    const k = grams / entry.grams;
+    macros = {
+      kcal: round(entry.kcal * k, 0),
+      protein_g: round(entry.protein_g * k),
+      carbs_g: round(entry.carbs_g * k),
+      fat_g: round(entry.fat_g * k),
+    };
+  } else {
+    res.status(400).json({ error: "bad_request", detail: "questa voce non ha una grammatura modificabile" });
+    return;
+  }
+
+  res.json(updateDiaryEntry(id, grams, macros));
 });
 
 diaryRouter.delete("/:id", (req, res) => {

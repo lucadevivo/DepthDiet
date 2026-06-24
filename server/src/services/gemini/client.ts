@@ -23,7 +23,7 @@ export class GeminiParseError extends Error {
 }
 
 let client: GoogleGenAI | null = null;
-function getClient(): GoogleGenAI {
+export function getClient(): GoogleGenAI {
   if (!env.gemini.enabled) throw new GeminiNotConfiguredError();
   if (!client) client = new GoogleGenAI({ apiKey: env.gemini.apiKey });
   return client;
@@ -34,7 +34,7 @@ const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms
 /** Status transitori per cui ha senso ritentare (rate-limit / sovraccarico del modello). */
 const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
 
-function statusOf(err: unknown): number | undefined {
+export function statusOf(err: unknown): number | undefined {
   return typeof err === "object" && err !== null && "status" in err
     ? (err as { status?: number }).status
     : undefined;
@@ -45,7 +45,7 @@ function statusOf(err: unknown): number | undefined {
  * Il free tier di Gemini risponde 429 (rate limit) o 503 (alta domanda) abbastanza
  * spesso: senza retry l'esperienza sarebbe fragile.
  */
-async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
+export async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
   let lastErr: unknown;
   for (let i = 0; i < attempts; i++) {
     try {

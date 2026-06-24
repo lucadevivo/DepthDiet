@@ -3,12 +3,19 @@ import {
   analyzeMeal,
   GeminiNotConfiguredError,
   GeminiParseError,
+  statusOf,
 } from "../services/gemini/client.js";
+import { suggestMeal } from "../services/gemini/suggest.js";
 import type {
   AnalyzeInput,
   DepthQuality,
   ReferenceType,
 } from "../services/gemini/types.js";
+import { getDiaryByDate } from "../repositories/diary.js";
+import { getProfile } from "../repositories/profile.js";
+import { getAllCustomFoods } from "../repositories/customFoods.js";
+import { getAllRecipes } from "../repositories/recipes.js";
+import type { Macros } from "../services/nutrition.js";
 import { profileRouter } from "./profile.js";
 import { foodsRouter } from "./foods.js";
 import { recipesRouter } from "./recipes.js";
@@ -16,6 +23,7 @@ import { diaryRouter } from "./diary.js";
 import { mealsRouter } from "./meals.js";
 import { offRouter } from "./off.js";
 import { weightRouter } from "./weight.js";
+import { waterRouter } from "./water.js";
 
 /**
  * Router delle rotte APPLICATIVE protette. Montato dietro requireAuth in app.ts.
@@ -43,6 +51,9 @@ apiRouter.use("/off", offRouter);
 
 // Fase 3d — Peso & TDEE adattivo.
 apiRouter.use("/weight", weightRouter);
+
+// Acqua: contatore giornaliero persistente (water_log).
+apiRouter.use("/water", waterRouter);
 
 /** Validazione minima del corpo della richiesta di analisi. */
 function parseAnalyzeBody(body: unknown): AnalyzeInput | { error: string } {
@@ -103,6 +114,61 @@ apiRouter.post("/analyze", async (req: Request, res: Response) => {
     }
     // Errori di rete/quota dell'API Gemini.
     console.error("[analyze] errore Gemini:", err);
+    res.status(502).json({ error: "gemini_request_failed" });
+  }
+});
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Suggeritore IA: dato il giorno, calcola i macro mancanti per l'obiettivo e
+ * chiede a Gemini cosa mangiare. `onlyLibrary` limita i consigli agli Alimenti/
+ * Ricette già salvati dall'utente.
+ */
+apiRouter.post("/suggest", async (req: Request, res: Response) => {
+  const b = (req.body ?? {}) as Record<string, unknown>;
+  const date = typeof b.date === "string" ? b.date : "";
+  if (!DATE_RE.test(date)) {
+    res.status(400).json({ error: "bad_request", detail: "date=YYYY-MM-DD richiesto" });
+    return;
+  }
+  const onlyLibrary = b.onlyLibrary === true;
+  const note = typeof b.note === "string" ? b.note.slice(0, 500) : undefined;
+
+  const profile = getProfile();
+  if (profile?.target_calories == null) {
+    res.status(400).json({ error: "no_targets", detail: "imposta prima il profilo/obiettivi" });
+    return;
+  }
+
+  const day = getDiaryByDate(date);
+  const remaining: Macros = {
+    kcal: Math.max(0, (profile.target_calories ?? 0) - day.totals.kcal),
+    protein_g: Math.max(0, (profile.target_protein_g ?? 0) - day.totals.protein_g),
+    carbs_g: Math.max(0, (profile.target_carbs_g ?? 0) - day.totals.carbs_g),
+    fat_g: Math.max(0, (profile.target_fat_g ?? 0) - day.totals.fat_g),
+  };
+
+  try {
+    const result = await suggestMeal({
+      remaining,
+      onlyLibrary,
+      note,
+      foods: getAllCustomFoods(),
+      recipes: getAllRecipes(),
+    });
+    res.json({ ...result, remaining });
+  } catch (err) {
+    if (err instanceof GeminiNotConfiguredError) {
+      res.status(503).json({ error: "gemini_not_configured" });
+      return;
+    }
+    // Rate limit del free tier: lo distinguiamo così l'app può dire "riprova tra poco".
+    if (statusOf(err) === 429) {
+      res.status(429).json({ error: "gemini_rate_limited" });
+      return;
+    }
+    console.error("[suggest] errore Gemini:", err);
     res.status(502).json({ error: "gemini_request_failed" });
   }
 });

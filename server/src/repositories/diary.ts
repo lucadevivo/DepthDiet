@@ -90,6 +90,28 @@ export function addDiaryEntry(e: NewDiaryEntry): DiaryEntry {
     .get(Number(info.lastInsertRowid)) as unknown as DiaryEntry;
 }
 
+export function getDiaryEntryById(id: number): DiaryEntry | undefined {
+  return getDb()
+    .prepare(
+      `SELECT id, entry_date, meal_id, source, custom_food_id, recipe_id, description, grams,
+              kcal, protein_g, carbs_g, fat_g, created_at
+         FROM diary_entries WHERE id = ?`,
+    )
+    .get(id) as unknown as DiaryEntry | undefined;
+}
+
+/** Aggiorna grammatura + snapshot macro di una voce esistente (modifica porzione). */
+export function updateDiaryEntry(id: number, grams: number, macros: Macros): DiaryEntry | undefined {
+  getDb()
+    .prepare(
+      `UPDATE diary_entries SET
+         grams = ?, kcal = ?, protein_g = ?, carbs_g = ?, fat_g = ?
+       WHERE id = ?`,
+    )
+    .run(grams, macros.kcal, macros.protein_g, macros.carbs_g, macros.fat_g, id);
+  return getDiaryEntryById(id);
+}
+
 export function deleteDiaryEntry(id: number): boolean {
   const info = getDb().prepare("DELETE FROM diary_entries WHERE id = ?").run(id);
   return info.changes > 0;
