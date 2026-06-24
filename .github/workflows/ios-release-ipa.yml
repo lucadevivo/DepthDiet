@@ -1,0 +1,111 @@
+name: iOS release IPA (unsigned, standalone)
+
+# Costruisce un IPA RELEASE non firmato su runner macOS gratuito.
+# A differenza della dev build: configurazione Release -> il bundle JS è
+# INCORPORATO nell'app (niente Metro), e l'URL del backend di produzione è
+# bakato nel bundle (EXPO_PUBLIC_BACKEND_URL). L'IPA si installa via sideload
+# (ri-firma con Apple ID free). Trigger manuale dalla tab Actions.
+
+on:
+  workflow_dispatch:
+    inputs:
+      backend_url:
+        description: "URL backend da incorporare nel bundle"
+        required: true
+        default: "https://foodtracker.webluca.app"
+
+env:
+  # Bakato nel bundle JS al momento del build (le EXPO_PUBLIC_* sono inlinate).
+  EXPO_PUBLIC_BACKEND_URL: ${{ github.event.inputs.backend_url }}
+
+jobs:
+  build:
+    # RN 0.85 / Expo 56 (xcframework precompilati) richiede Swift 6.2 -> Xcode 26.
+    runs-on: macos-26
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Seleziona l'Xcode più recente (serve Swift 6.2)
+        run: |
+          set -eo pipefail
+          LATEST=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          echo "Uso $LATEST"
+          sudo xcode-select -s "$LATEST/Contents/Developer"
+          xcodebuild -version
+          swift --version
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install JS deps
+        run: npm install --legacy-peer-deps
+
+      - name: Expo prebuild (genera progetto iOS + pods)
+        run: npx expo prebuild --platform ios
+        env:
+          CI: "1"
+
+      - name: Individua workspace e scheme
+        id: xc
+        run: |
+          set -euo pipefail
+          WORKSPACE=$(find ios -maxdepth 1 -name '*.xcworkspace' | head -1)
+          echo "Workspace: [$WORKSPACE]"
+          xcodebuild -list -workspace "$WORKSPACE" || true
+          SCHEME=$(basename "$WORKSPACE" .xcworkspace)
+          echo "Scheme: [$SCHEME]"
+          echo "workspace=$WORKSPACE" >> "$GITHUB_OUTPUT"
+          echo "scheme=$SCHEME" >> "$GITHUB_OUTPUT"
+
+      - name: Build Release per device, senza firma (bundle JS incorporato)
+        env:
+          EXPO_PUBLIC_BACKEND_URL: ${{ env.EXPO_PUBLIC_BACKEND_URL }}
+        run: |
+          set -o pipefail
+          echo "Backend incorporato: $EXPO_PUBLIC_BACKEND_URL"
+          xcodebuild \
+            -workspace "${{ steps.xc.outputs.workspace }}" \
+            -scheme "${{ steps.xc.outputs.scheme }}" \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            PROVISIONING_PROFILE_SPECIFIER="" \
+            DEVELOPMENT_TEAM="" \
+            ENABLE_BITCODE=NO \
+            build 2>&1 | tee xcodebuild.log
+
+      - name: Carica i log (anche se fallisce)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs-release
+          path: |
+            mobile/xcodebuild.log
+            mobile/ios/Podfile.lock
+          if-no-files-found: warn
+
+      - name: Impacchetta in .ipa
+        run: |
+          set -eo pipefail
+          APP=$(ls -d build/Build/Products/Release-iphoneos/*.app | head -1)
+          echo "App: $APP"
+          rm -rf Payload && mkdir Payload
+          cp -R "$APP" Payload/
+          ipa_name="food-tracker-release.ipa"
+          zip -ry "$ipa_name" Payload >/dev/null
+          ls -lh "$ipa_name"
+
+      - name: Carica l'IPA come artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: food-tracker-release-ipa
+          path: mobile/food-tracker-release.ipa
+          if-no-files-found: error
