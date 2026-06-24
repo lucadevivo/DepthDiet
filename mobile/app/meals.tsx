@@ -1,17 +1,19 @@
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ScrollView,
   View,
   Text,
   TextInput,
   Pressable,
+  Animated,
   ActivityIndicator,
   Alert,
   StyleSheet,
 } from "react-native";
+import { GestureDetector, Gesture } from "react-native-gesture-handler";
 import { ScreenHeader } from "../src/components/ScreenHeader";
 import { Icon } from "../src/components/Icon";
-import { useTheme, useThemed } from "../src/theme/ThemeProvider";
+import { useThemed } from "../src/theme/ThemeProvider";
 import type { ThemeColors } from "../src/theme/colors";
 import {
   useMealsQuery,
@@ -22,15 +24,16 @@ import {
 } from "../src/hooks/useMeals";
 import type { Meal } from "../src/types/meals";
 
-/** Profile → Meals: crea, rinomina, riordina ed elimina i pasti (F3). */
+/** Altezza di uno slot (riga + spazio): serve per calcolare la posizione nel drag. */
+const ITEM_H = 64;
+
+/** Profile → Meals: crea, rinomina, riordina (drag-and-drop) ed elimina i pasti. */
 export default function MealsScreen() {
   const { colors, styles } = useThemed(makeStyles);
   const meals = useMealsQuery();
   const create = useCreateMeal();
-  const reorder = useReorderMeals();
   const [newName, setNewName] = useState("");
-
-  const list = meals.data ?? [];
+  const [scrollEnabled, setScrollEnabled] = useState(true);
 
   const onAdd = () => {
     const name = newName.trim();
@@ -38,21 +41,17 @@ export default function MealsScreen() {
     create.mutate(name, { onSuccess: () => setNewName("") });
   };
 
-  const move = (index: number, dir: -1 | 1) => {
-    const next = index + dir;
-    if (next < 0 || next >= list.length) return;
-    const ids = list.map((m) => m.id);
-    [ids[index], ids[next]] = [ids[next]!, ids[index]!];
-    reorder.mutate(ids);
-  };
-
   return (
     <View style={styles.screen}>
       <ScreenHeader title="Meals" />
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        scrollEnabled={scrollEnabled}
+      >
         <Text style={styles.lead}>
-          Your meals organize the diary. Reorder, rename or delete them — deleting a meal keeps its
-          past entries under "Other".
+          Your meals organize the diary. Drag the handle on the left to reorder, tap a name to
+          rename, or delete — deleting a meal keeps its past entries under "Other".
         </Text>
 
         {meals.isLoading ? (
@@ -60,18 +59,7 @@ export default function MealsScreen() {
         ) : meals.isError ? (
           <Text style={styles.error}>Could not load meals. Check connection/credentials.</Text>
         ) : (
-          <View style={{ gap: 10 }}>
-            {list.map((meal, i) => (
-              <MealRow
-                key={meal.id}
-                meal={meal}
-                isFirst={i === 0}
-                isLast={i === list.length - 1}
-                onMoveUp={() => move(i, -1)}
-                onMoveDown={() => move(i, 1)}
-              />
-            ))}
-          </View>
+          <DraggableMeals meals={meals.data ?? []} onDraggingChange={(d) => setScrollEnabled(!d)} />
         )}
 
         {/* Crea un nuovo pasto. */}
@@ -103,24 +91,149 @@ export default function MealsScreen() {
   );
 }
 
-function MealRow({
+/** Lista riordinabile via drag dell'handle. Non muta l'ordine durante il drag:
+ *  mostra un "buco" nello slot di destinazione e committa solo al rilascio. */
+function DraggableMeals({
+  meals,
+  onDraggingChange,
+}: {
+  meals: Meal[];
+  onDraggingChange: (dragging: boolean) => void;
+}) {
+  const { styles } = useThemed(makeStyles);
+  const reorder = useReorderMeals();
+
+  const [order, setOrder] = useState<Meal[]>(meals);
+  const orderRef = useRef(order);
+  orderRef.current = order;
+
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const [targetIndex, setTargetIndex] = useState<number | null>(null);
+  const targetRef = useRef<number | null>(null);
+  const draggingRef = useRef(false);
+  const translateY = useRef(new Animated.Value(0)).current;
+
+  // Risincronizza dall'ordine del server solo quando non si sta trascinando.
+  useEffect(() => {
+    if (!draggingRef.current) setOrder(meals);
+  }, [meals]);
+
+  const onStart = useCallback(
+    (index: number) => {
+      draggingRef.current = true;
+      onDraggingChange(true);
+      setActiveIndex(index);
+      targetRef.current = index;
+      setTargetIndex(index);
+      translateY.setValue(0);
+    },
+    [onDraggingChange, translateY],
+  );
+
+  const onMove = useCallback(
+    (index: number, ty: number) => {
+      translateY.setValue(ty);
+      const n = orderRef.current.length;
+      const t = Math.max(0, Math.min(n - 1, Math.round(index + ty / ITEM_H)));
+      if (t !== targetRef.current) {
+        targetRef.current = t;
+        setTargetIndex(t);
+      }
+    },
+    [translateY],
+  );
+
+  const reset = useCallback(() => {
+    draggingRef.current = false;
+    onDraggingChange(false);
+    setActiveIndex(null);
+    setTargetIndex(null);
+    targetRef.current = null;
+    translateY.setValue(0);
+  }, [onDraggingChange, translateY]);
+
+  const onEnd = useCallback(
+    (index: number) => {
+      const to = targetRef.current ?? index;
+      if (to !== index) {
+        const next = orderRef.current.slice();
+        const [m] = next.splice(index, 1);
+        next.splice(to, 0, m!);
+        setOrder(next);
+        reorder.mutate(next.map((x) => x.id));
+      }
+      reset();
+    },
+    [reorder, reset],
+  );
+
+  // Posizione verticale di ogni riga, con lo "scostamento" per il buco di drop.
+  const topFor = (i: number): number => {
+    if (activeIndex == null || i === activeIndex) return i * ITEM_H;
+    const a = activeIndex;
+    const t = targetIndex ?? a;
+    if (a < t && i > a && i <= t) return (i - 1) * ITEM_H;
+    if (a > t && i < a && i >= t) return (i + 1) * ITEM_H;
+    return i * ITEM_H;
+  };
+
+  return (
+    <View style={{ height: order.length * ITEM_H }}>
+      {order.map((meal, i) => (
+        <MealDragRow
+          key={meal.id}
+          meal={meal}
+          index={i}
+          active={i === activeIndex}
+          top={topFor(i)}
+          translateY={translateY}
+          onStart={onStart}
+          onMove={onMove}
+          onEnd={onEnd}
+          onCancel={() => draggingRef.current && reset()}
+        />
+      ))}
+    </View>
+  );
+}
+
+function MealDragRow({
   meal,
-  isFirst,
-  isLast,
-  onMoveUp,
-  onMoveDown,
+  index,
+  active,
+  top,
+  translateY,
+  onStart,
+  onMove,
+  onEnd,
+  onCancel,
 }: {
   meal: Meal;
-  isFirst: boolean;
-  isLast: boolean;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
+  index: number;
+  active: boolean;
+  top: number;
+  translateY: Animated.Value;
+  onStart: (index: number) => void;
+  onMove: (index: number, ty: number) => void;
+  onEnd: (index: number) => void;
+  onCancel: () => void;
 }) {
   const { colors, styles } = useThemed(makeStyles);
   const rename = useRenameMeal();
   const del = useDeleteMeal();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(meal.name);
+
+  const pan = useMemo(
+    () =>
+      Gesture.Pan()
+        .activateAfterLongPress(150)
+        .onStart(() => onStart(index))
+        .onUpdate((e) => onMove(index, e.translationY))
+        .onEnd(() => onEnd(index))
+        .onFinalize(() => onCancel()),
+    [index, onStart, onMove, onEnd, onCancel],
+  );
 
   const saveName = () => {
     const n = name.trim();
@@ -140,94 +253,105 @@ function MealRow({
   };
 
   return (
-    <View style={styles.row}>
-      <View style={styles.reorder}>
-        <Pressable onPress={onMoveUp} disabled={isFirst} hitSlop={6}>
-          <Icon name="back" size={18} color={isFirst ? colors.border : colors.textMuted} />
+    <Animated.View
+      style={[
+        styles.dragWrap,
+        { top },
+        active && { transform: [{ translateY }], zIndex: 10, elevation: 6 },
+      ]}
+    >
+      <View style={[styles.row, active && styles.rowActive]}>
+        <GestureDetector gesture={pan}>
+          <View style={styles.handle}>
+            <Icon name="drag" size={24} color={colors.textMuted} />
+          </View>
+        </GestureDetector>
+
+        {editing ? (
+          <TextInput
+            style={styles.editInput}
+            value={name}
+            onChangeText={setName}
+            autoFocus
+            maxLength={40}
+            onSubmitEditing={saveName}
+            onBlur={saveName}
+            returnKeyType="done"
+          />
+        ) : (
+          <Pressable style={{ flex: 1 }} onPress={() => setEditing(true)}>
+            <Text style={styles.name}>{meal.name}</Text>
+          </Pressable>
+        )}
+
+        <Pressable
+          onPress={() => (editing ? saveName() : setEditing(true))}
+          hitSlop={8}
+          style={styles.iconBtn}
+        >
+          <Icon name={editing ? "check" : "settings"} size={18} color={colors.textMuted} />
         </Pressable>
-        <Pressable onPress={onMoveDown} disabled={isLast} hitSlop={6}>
-          <Icon name="forward" size={18} color={isLast ? colors.border : colors.textMuted} />
+        <Pressable onPress={confirmDelete} hitSlop={8} style={styles.iconBtn}>
+          <Icon name="close" size={18} color={colors.textMuted} />
         </Pressable>
       </View>
-
-      {editing ? (
-        <TextInput
-          style={styles.editInput}
-          value={name}
-          onChangeText={setName}
-          autoFocus
-          maxLength={40}
-          onSubmitEditing={saveName}
-          onBlur={saveName}
-          returnKeyType="done"
-        />
-      ) : (
-        <Pressable style={{ flex: 1 }} onPress={() => setEditing(true)}>
-          <Text style={styles.name}>{meal.name}</Text>
-        </Pressable>
-      )}
-
-      <Pressable onPress={() => (editing ? saveName() : setEditing(true))} hitSlop={8} style={styles.iconBtn}>
-        <Icon name={editing ? "check" : "settings"} size={18} color={colors.textMuted} />
-      </Pressable>
-      <Pressable onPress={confirmDelete} hitSlop={8} style={styles.iconBtn}>
-        <Icon name="close" size={18} color={colors.textMuted} />
-      </Pressable>
-    </View>
+    </Animated.View>
   );
 }
 
 const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: 16, gap: 14, paddingBottom: 60 },
-  lead: { color: colors.textMuted, fontSize: 13, lineHeight: 18 },
-  error: { color: colors.fat, fontSize: 13 },
+    screen: { flex: 1, backgroundColor: colors.bg },
+    content: { padding: 16, gap: 14, paddingBottom: 60 },
+    lead: { color: colors.textMuted, fontSize: 13, lineHeight: 18 },
+    error: { color: colors.fat, fontSize: 13 },
 
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  reorder: { gap: 2, alignItems: "center" },
-  name: { color: colors.text, fontSize: 16, fontWeight: "700" },
-  editInput: {
-    flex: 1,
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: "700",
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
-  iconBtn: { padding: 4 },
+    dragWrap: { position: "absolute", left: 0, right: 0, height: ITEM_H, justifyContent: "center" },
+    row: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      paddingVertical: 12,
+      paddingHorizontal: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    rowActive: { borderColor: colors.primary, backgroundColor: colors.surfaceAlt },
+    handle: { paddingHorizontal: 6, paddingVertical: 4 },
+    name: { color: colors.text, fontSize: 16, fontWeight: "700" },
+    editInput: {
+      flex: 1,
+      color: colors.text,
+      fontSize: 16,
+      fontWeight: "700",
+      backgroundColor: colors.surfaceAlt,
+      borderRadius: 8,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+    },
+    iconBtn: { padding: 4 },
 
-  addCard: { flexDirection: "row", gap: 10, alignItems: "center", marginTop: 6 },
-  input: {
-    flex: 1,
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    color: colors.text,
-    fontSize: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-  },
-  addBtn: {
-    width: 50,
-    height: 50,
-    borderRadius: 12,
-    backgroundColor: colors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  disabled: { opacity: 0.5 },
-});
+    addCard: { flexDirection: "row", gap: 10, alignItems: "center", marginTop: 6 },
+    input: {
+      flex: 1,
+      backgroundColor: colors.surfaceAlt,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      color: colors.text,
+      fontSize: 16,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+    },
+    addBtn: {
+      width: 50,
+      height: 50,
+      borderRadius: 12,
+      backgroundColor: colors.primary,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    disabled: { opacity: 0.5 },
+  });

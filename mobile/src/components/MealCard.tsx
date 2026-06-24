@@ -9,6 +9,8 @@ interface Props {
   entries: DiaryEntry[];
   onAdd: () => void;
   onDelete: (id: number) => void;
+  /** Tocco su una voce: apre la modifica della grammatura. */
+  onEditEntry?: (entry: DiaryEntry) => void;
   /** Nasconde il bottone "Add" (es. gruppo "Other" dei pasti eliminati). */
   showAdd?: boolean;
 }
@@ -32,7 +34,7 @@ function MacroCell({ value, label, color, unit = "" }: { value: number; label: s
  * (Carb/Prot/Grassi/Calorie), elenco voci con eliminazione e bottone "Aggiungi".
  * I totali del pasto sono calcolati dalle voci.
  */
-export function MealCard({ title, entries, onAdd, onDelete, showAdd = true }: Props) {
+export function MealCard({ title, entries, onAdd, onDelete, onEditEntry, showAdd = true }: Props) {
   const { colors, styles } = useThemed(makeStyles);
   const t = entries.reduce(
     (acc, e) => {
@@ -58,22 +60,31 @@ export function MealCard({ title, entries, onAdd, onDelete, showAdd = true }: Pr
 
       {entries.length > 0 ? (
         <View style={styles.entries}>
-          {entries.map((e) => (
-            <View key={e.id} style={styles.entry}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.entryName} numberOfLines={1}>
-                  {e.description ?? "Voce"}
-                </Text>
-                <Text style={styles.entryMeta}>
-                  {e.grams != null ? `${e.grams} g · ` : ""}
-                  {e.kcal} kcal
-                </Text>
+          {entries.map((e) => {
+            // Modificabile per grammatura solo se la voce ha un peso impostato.
+            const editable = onEditEntry != null && e.grams != null;
+            return (
+              <View key={e.id} style={styles.entry}>
+                <Pressable
+                  style={styles.entryMain}
+                  onPress={editable ? () => onEditEntry!(e) : undefined}
+                  disabled={!editable}
+                >
+                  <Text style={styles.entryName} numberOfLines={1}>
+                    {e.description ?? "Voce"}
+                  </Text>
+                  <Text style={styles.entryMeta}>
+                    {e.grams != null ? `${e.grams} g · ` : ""}
+                    {e.kcal} kcal
+                    {editable ? "  ·  tap to edit" : ""}
+                  </Text>
+                </Pressable>
+                <Pressable onPress={() => onDelete(e.id)} hitSlop={10} style={styles.del}>
+                  <Icon name="close" size={16} color={colors.textMuted} />
+                </Pressable>
               </View>
-              <Pressable onPress={() => onDelete(e.id)} hitSlop={10} style={styles.del}>
-                <Icon name="close" size={16} color={colors.textMuted} />
-              </Pressable>
-            </View>
-          ))}
+            );
+          })}
         </View>
       ) : null}
 
@@ -113,6 +124,7 @@ const makeStyles = (colors: ThemeColors) =>
     paddingVertical: 10,
     paddingHorizontal: 12,
   },
+  entryMain: { flex: 1 },
   entryName: { color: colors.text, fontSize: 14, fontWeight: "600" },
   entryMeta: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
   del: { paddingLeft: 12 },

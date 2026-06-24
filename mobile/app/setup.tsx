@@ -78,7 +78,7 @@ export default function SetupScreen() {
     return (
       <View style={styles.screen}>
         <ScreenHeader title="Settings" />
-        <ActivityIndicator color={colors.protein} style={{ marginTop: 32 }} />
+        <ActivityIndicator color={colors.primary} style={{ marginTop: 32 }} />
       </View>
     );
   }
@@ -86,7 +86,7 @@ export default function SetupScreen() {
   return (
     <View style={styles.screen}>
       <ScreenHeader title="Settings" />
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Text style={styles.lead}>
           Backend access credentials. They stay in the phone Keychain, never in the bundle.
         </Text>
@@ -185,6 +185,6 @@ const makeStyles = (colors: ThemeColors) =>
   },
   secondaryText: { color: colors.text, fontSize: 15, fontWeight: "700" },
   disabled: { opacity: 0.5 },
-  ok: { color: colors.protein, fontSize: 14, fontWeight: "700" },
+  ok: { color: colors.primary, fontSize: 14, fontWeight: "700" },
   error: { color: colors.fat, fontSize: 14 },
 });

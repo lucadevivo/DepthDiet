@@ -12,6 +12,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "expo-router";
 import { ScreenHeader } from "../src/components/ScreenHeader";
 import { OffProductRow } from "../src/components/OffProductRow";
+import { Icon } from "../src/components/Icon";
 import { useTheme, useThemed } from "../src/theme/ThemeProvider";
 import type { ThemeColors } from "../src/theme/colors";
 import { searchOff } from "../src/api/off";
@@ -32,6 +33,11 @@ export default function OffSearchScreen() {
   return (
     <View style={styles.screen}>
       <ScreenHeader title="Open Food Facts" />
+      <Text style={styles.help}>
+        Open Food Facts is a free, community database of packaged foods. Search a product to import
+        its nutrition into your foods.
+      </Text>
+
       <View style={styles.searchBar}>
         <TextInput
           style={styles.input}
@@ -47,18 +53,21 @@ export default function OffSearchScreen() {
         </Pressable>
       </View>
 
-      <Link href="/scan" style={styles.scanLink}>
-        📷 or scan a barcode
+      <Link href="/scan" asChild>
+        <Pressable style={styles.scanLink}>
+          <Icon name="barcode" size={18} color={colors.water} />
+          <Text style={styles.scanLinkText}>or scan a barcode</Text>
+        </Pressable>
       </Link>
 
       {results.isFetching ? (
-        <ActivityIndicator color={colors.protein} style={{ marginTop: 24 }} />
+        <ActivityIndicator color={colors.primary} style={{ marginTop: 24 }} />
       ) : results.isError ? (
         <Text style={styles.error}>
           Open Food Facts search failed. Try again shortly.
         </Text>
       ) : (
-        <FlatList
+        <FlatList showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.list}
           data={results.data ?? []}
           keyExtractor={(p, i) => `${p.barcode || "x"}-${i}`}
@@ -99,13 +108,15 @@ const makeStyles = (colors: ThemeColors) =>
     paddingVertical: 12,
   },
   searchBtn: {
-    backgroundColor: colors.protein,
+    backgroundColor: colors.primary,
     borderRadius: 12,
     paddingHorizontal: 18,
     justifyContent: "center",
   },
-  searchBtnText: { color: "#fff", fontWeight: "800" },
-  scanLink: { color: colors.water, fontSize: 14, fontWeight: "700", paddingHorizontal: 16, paddingVertical: 6 },
+  searchBtnText: { color: colors.onPrimary, fontWeight: "800" },
+  help: { color: colors.textMuted, fontSize: 13, lineHeight: 18, paddingHorizontal: 16, paddingBottom: 10 },
+  scanLink: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 16, paddingVertical: 6 },
+  scanLinkText: { color: colors.water, fontSize: 14, fontWeight: "700" },
   list: { padding: 16 },
   empty: { color: colors.textMuted, fontSize: 13, textAlign: "center", marginTop: 24 },
   error: { color: colors.fat, fontSize: 14, textAlign: "center", marginTop: 24, paddingHorizontal: 16 },

@@ -23,8 +23,38 @@ export class ImagePickCancelled extends Error {
 }
 
 /**
- * Apre fotocamera o galleria, poi ridimensiona e comprime in JPEG base64.
- * Comprimere lato client riduce i tempi di upload (limiti body Cloudflare) e l'I/O verso Gemini.
+ * Ridimensiona (lato lungo ≤ MAX_DIMENSION) e comprime un'immagine da URI in JPEG
+ * base64. Comprimere lato client riduce i tempi di upload (limiti body Cloudflare)
+ * e l'I/O verso Gemini. Usato sia dalla galleria sia dalla fotocamera interna.
+ */
+export async function prepareMealImage(
+  uri: string,
+  width?: number,
+  height?: number,
+): Promise<PickedImage> {
+  const longest = Math.max(width ?? MAX_DIMENSION, height ?? MAX_DIMENSION);
+  const context = ImageManipulator.manipulate(uri);
+  if (longest > MAX_DIMENSION) {
+    const scale = MAX_DIMENSION / longest;
+    context.resize({
+      width: Math.round((width ?? MAX_DIMENSION) * scale),
+      height: Math.round((height ?? MAX_DIMENSION) * scale),
+    });
+  }
+  const rendered = await context.renderAsync();
+  const out = await rendered.saveAsync({
+    format: SaveFormat.JPEG,
+    compress: JPEG_QUALITY,
+    base64: true,
+  });
+
+  if (!out.base64) throw new Error("compressione immagine fallita");
+  return { base64: out.base64, mimeType: "image/jpeg" };
+}
+
+/**
+ * Apre fotocamera di sistema o galleria, poi delega a `prepareMealImage`.
+ * La fotocamera interna (expo-camera) usa direttamente `prepareMealImage` sull'URI.
  */
 export async function pickAndPrepareMealImage(source: ImageSource): Promise<PickedImage> {
   const perm =
@@ -45,24 +75,5 @@ export async function pickAndPrepareMealImage(source: ImageSource): Promise<Pick
 
   if (result.canceled || !result.assets?.[0]) throw new ImagePickCancelled("cancelled");
   const asset = result.assets[0];
-
-  // Resize mantenendo le proporzioni: limita solo il lato più lungo.
-  const longest = Math.max(asset.width ?? MAX_DIMENSION, asset.height ?? MAX_DIMENSION);
-  const context = ImageManipulator.manipulate(asset.uri);
-  if (longest > MAX_DIMENSION) {
-    const scale = MAX_DIMENSION / longest;
-    context.resize({
-      width: Math.round((asset.width ?? MAX_DIMENSION) * scale),
-      height: Math.round((asset.height ?? MAX_DIMENSION) * scale),
-    });
-  }
-  const rendered = await context.renderAsync();
-  const out = await rendered.saveAsync({
-    format: SaveFormat.JPEG,
-    compress: JPEG_QUALITY,
-    base64: true,
-  });
-
-  if (!out.base64) throw new Error("compressione immagine fallita");
-  return { base64: out.base64, mimeType: "image/jpeg" };
+  return prepareMealImage(asset.uri, asset.width, asset.height);
 }

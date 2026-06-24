@@ -10,7 +10,6 @@ import {
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ScreenHeader } from "../../src/components/ScreenHeader";
-import { NumberField } from "../../src/components/NumberField";
 import { SegmentedControl } from "../../src/components/SegmentedControl";
 import { Icon } from "../../src/components/Icon";
 import { useTheme, useThemed } from "../../src/theme/ThemeProvider";
@@ -55,34 +54,27 @@ export default function AddDiaryScreen() {
 
   const [mode, setMode] = useState<Mode>("custom_food");
 
-  // Alimento
+  // Alimento: toccarlo apre la schermata "porzione" (grammi + macro), non si
+  // aggiunge da qui.
   const [search, setSearch] = useState("");
   const foods = useFoodsQuery(search);
-  const [foodId, setFoodId] = useState<number | null>(null);
-  const [grams, setGrams] = useState("");
+  const openPortion = (foodId: number) =>
+    router.push(`/diary/portion?food_id=${foodId}&meal_id=${mealId ?? ""}&date=${date}`);
 
   // Ricetta
   const recipes = useRecipesQuery();
   const [recipeId, setRecipeId] = useState<number | null>(null);
 
-  const onSubmit = () => {
-    if (mealId == null) return;
-    let body: AddDiaryBody | null = null;
-    if (mode === "custom_food") {
-      const g = Number.parseFloat(grams);
-      if (foodId == null || !Number.isFinite(g) || g <= 0) return;
-      body = { date, meal_id: mealId, type: "custom_food", food_id: foodId, grams: g };
-    } else {
-      if (recipeId == null) return;
-      body = { date, meal_id: mealId, type: "recipe", recipe_id: recipeId };
-    }
+  const onAddRecipe = () => {
+    if (mealId == null || recipeId == null) return;
+    const body: AddDiaryBody = { date, meal_id: mealId, type: "recipe", recipe_id: recipeId };
     add.mutate(body, { onSuccess: () => router.back() });
   };
 
   return (
     <View style={styles.screen}>
       <ScreenHeader title={`Add to ${mealName}`} />
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {/* Scorciatoia: fotografa il pasto invece di inserirlo a mano. */}
         <Pressable
           style={styles.scanBtn}
@@ -104,41 +96,43 @@ export default function AddDiaryScreen() {
               value={search}
               onChangeText={setSearch}
             />
-            <PickList
+            <FoodList
               loading={foods.isLoading}
               error={foods.isError}
               items={foods.data ?? []}
-              selectedId={foodId}
-              onSelect={setFoodId}
-              render={(food: CustomFood) => `${food.name}  ·  ${food.kcal_per_100} kcal/100g`}
-              emptyText="No foods yet. Create one from the Foods screen."
+              onSelect={openPortion}
             />
-            <NumberField label="Grams" value={grams} onChangeText={setGrams} unit="g" />
           </>
         ) : (
-          <PickList
-            loading={recipes.isLoading}
-            error={recipes.isError}
-            items={recipes.data ?? []}
-            selectedId={recipeId}
-            onSelect={setRecipeId}
-            render={(r: RecipeSummary) => `${r.name}  ·  ${r.totals.kcal} kcal`}
-            emptyText="No recipes yet. Create one from the Recipes screen."
-          />
+          <>
+            <PickList
+              loading={recipes.isLoading}
+              error={recipes.isError}
+              items={recipes.data ?? []}
+              selectedId={recipeId}
+              onSelect={setRecipeId}
+              render={(r: RecipeSummary) => `${r.name}  ·  ${r.totals.kcal} kcal`}
+              emptyText="No recipes yet. Create one from the Recipes screen."
+            />
+            <Pressable
+              onPress={onAddRecipe}
+              disabled={add.isPending || mealId == null || recipeId == null}
+              style={[
+                styles.saveBtn,
+                (add.isPending || mealId == null || recipeId == null) && styles.disabled,
+              ]}
+            >
+              {add.isPending ? (
+                <ActivityIndicator color={colors.onPrimary} />
+              ) : (
+                <Text style={styles.saveText}>Add</Text>
+              )}
+            </Pressable>
+            {add.isError ? (
+              <Text style={styles.error}>Something went wrong. Try again.</Text>
+            ) : null}
+          </>
         )}
-
-        <Pressable
-          onPress={onSubmit}
-          disabled={add.isPending || mealId == null}
-          style={[styles.saveBtn, (add.isPending || mealId == null) && styles.disabled]}
-        >
-          {add.isPending ? (
-            <ActivityIndicator color={colors.onPrimary} />
-          ) : (
-            <Text style={styles.saveText}>Add</Text>
-          )}
-        </Pressable>
-        {add.isError ? <Text style={styles.error}>Something went wrong. Try again.</Text> : null}
       </ScrollView>
     </View>
   );
@@ -163,7 +157,7 @@ function PickList<T extends { id: number }>({
   emptyText,
 }: PickListProps<T>) {
   const { colors, styles } = useThemed(makeStyles);
-  if (loading) return <ActivityIndicator color={colors.protein} style={{ marginVertical: 12 }} />;
+  if (loading) return <ActivityIndicator color={colors.primary} style={{ marginVertical: 12 }} />;
   if (error) return <Text style={styles.error}>Failed to load.</Text>;
   if (items.length === 0) return <Text style={styles.empty}>{emptyText}</Text>;
   return (
@@ -177,6 +171,53 @@ function PickList<T extends { id: number }>({
             style={[styles.pick, active && styles.pickActive]}
           >
             <Text style={[styles.pickText, active && styles.pickTextActive]}>{render(item)}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+/** Lista alimenti: toccare una riga apre la schermata "porzione" (grammi + macro). */
+function FoodList({
+  loading,
+  error,
+  items,
+  onSelect,
+}: {
+  loading: boolean;
+  error: boolean;
+  items: CustomFood[];
+  onSelect: (id: number) => void;
+}) {
+  const { colors, styles } = useThemed(makeStyles);
+  if (loading) return <ActivityIndicator color={colors.primary} style={{ marginVertical: 12 }} />;
+  if (error) return <Text style={styles.error}>Failed to load.</Text>;
+  if (items.length === 0)
+    return <Text style={styles.empty}>No foods yet. Create one from the Foods screen.</Text>;
+  return (
+    <View style={{ gap: 8 }}>
+      {items.map((food) => {
+        // Macro mostrati per la porzione predefinita (o 100 g se non impostata).
+        const serving = food.default_serving_g ?? 100;
+        const f = serving / 100;
+        return (
+          <Pressable key={food.id} onPress={() => onSelect(food.id)} style={styles.foodRow}>
+            <View style={styles.foodLeft}>
+              <Text style={styles.foodName} numberOfLines={1}>
+                {food.name}
+              </Text>
+              <Text style={styles.foodSub} numberOfLines={1}>
+                {food.brand ?? `${serving} g`}
+              </Text>
+            </View>
+            <View style={styles.foodRight}>
+              <Text style={styles.foodKcal}>{Math.round(food.kcal_per_100 * f)} kcal</Text>
+              <Text style={styles.foodMacros}>
+                C: {Math.round(food.carbs_per_100 * f)}  P: {Math.round(food.protein_per_100 * f)}
+                {"  "}G: {Math.round(food.fat_per_100 * f)}
+              </Text>
+            </View>
           </Pressable>
         );
       })}
@@ -205,9 +246,25 @@ const makeStyles = (colors: ThemeColors) =>
       borderWidth: 1,
       borderColor: colors.border,
     },
-    pickActive: { borderColor: colors.protein, backgroundColor: colors.surfaceAlt },
+    pickActive: { borderColor: colors.primary, backgroundColor: colors.surfaceAlt },
     pickText: { color: colors.text, fontSize: 14 },
-    pickTextActive: { fontWeight: "700", color: colors.protein },
+    pickTextActive: { fontWeight: "700", color: colors.primary },
+    foodRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 10,
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    foodLeft: { flex: 1 },
+    foodRight: { alignItems: "flex-end" },
+    foodName: { color: colors.text, fontSize: 15, fontWeight: "700" },
+    foodSub: { color: colors.textMuted, fontSize: 13, marginTop: 2 },
+    foodKcal: { color: colors.text, fontSize: 15, fontWeight: "800" },
+    foodMacros: { color: colors.textMuted, fontSize: 12, fontWeight: "600", marginTop: 2 },
     empty: { color: colors.textMuted, fontSize: 13 },
     saveBtn: {
       backgroundColor: colors.primary,

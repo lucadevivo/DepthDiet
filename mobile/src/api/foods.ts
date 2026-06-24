@@ -8,8 +8,16 @@ export function listFoods(query?: string): Promise<CustomFood[]> {
   return apiFetch<CustomFood[]>(`/api/foods${qs}`);
 }
 
+export function getFood(id: number): Promise<CustomFood> {
+  return apiFetch<CustomFood>(`/api/foods/${id}`);
+}
+
 export function createFood(input: CustomFoodInput): Promise<CustomFood> {
   return apiFetch<CustomFood>("/api/foods", { method: "POST", body: JSON.stringify(input) });
+}
+
+export function updateFood(id: number, input: CustomFoodInput): Promise<CustomFood> {
+  return apiFetch<CustomFood>(`/api/foods/${id}`, { method: "PUT", body: JSON.stringify(input) });
 }
 
 export function deleteFood(id: number): Promise<{ deleted: boolean }> {

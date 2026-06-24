@@ -6,12 +6,15 @@ import { useTheme, useThemed } from "../../src/theme/ThemeProvider";
 import type { ThemeColors } from "../../src/theme/colors";
 import { todayISO, shiftISO, formatDayLabel } from "../../src/lib/date";
 import { useDiaryQuery, useDeleteDiaryEntry } from "../../src/hooks/useDiary";
+import type { DiaryEntry } from "../../src/types/diary";
 import { useProfileQuery } from "../../src/hooks/useProfile";
 import { useMealsQuery } from "../../src/hooks/useMeals";
 import { ProgressBar } from "../../src/components/ProgressBar";
 import { MacroProgressColumn } from "../../src/components/MacroProgressColumn";
 import { MealCard } from "../../src/components/MealCard";
+import { WaterCounter } from "../../src/components/WaterCounter";
 import { Icon } from "../../src/components/Icon";
+import { bodyMetricsFromProfile } from "../../src/lib/bodyMetrics";
 
 // Fallback targets if the profile hasn't been computed yet.
 const FALLBACK = { calories: 2600, protein_g: 190, carbs_g: 270, fat_g: 75 };
@@ -42,10 +45,26 @@ export default function DiaryScreen() {
   };
   const kcalLeft = Math.max(0, Math.round(targets.calories - totals.kcal));
 
+  // Apre la modifica della grammatura di una voce: i dati correnti viaggiano nei
+  // parametri così la schermata può mostrare l'anteprima senza un nuovo fetch.
+  const openEdit = (e: DiaryEntry) => {
+    const q =
+      `id=${e.id}&date=${date}&grams=${e.grams ?? ""}` +
+      `&kcal=${e.kcal}&protein_g=${e.protein_g}&carbs_g=${e.carbs_g}&fat_g=${e.fat_g}` +
+      `&food_id=${e.custom_food_id ?? ""}` +
+      `&name=${encodeURIComponent(e.description ?? "Entry")}`;
+    router.push(`/diary/edit-entry?${q}`);
+  };
+
   return (
     <View style={styles.screen}>
-      {/* Dark header with day selector */}
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+      {/* Titolo schermata in alto a sinistra, come le altre schede. */}
+      <View style={[styles.titleBar, { paddingTop: insets.top + 8 }]}>
+        <Text style={styles.heading}>Diary</Text>
+      </View>
+
+      {/* Selettore del giorno */}
+      <View style={styles.header}>
         <Pressable onPress={() => setDate(shiftISO(date, -1))} hitSlop={12} style={styles.navBtn}>
           <Icon name="back" size={26} color={colors.textMuted} />
         </Pressable>
@@ -60,6 +79,7 @@ export default function DiaryScreen() {
       <ScrollView
         style={styles.screen}
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 32 }]}
+        showsVerticalScrollIndicator={false}
       >
         {diary.isError ? (
           <Text style={styles.error}>Backend unreachable: check URL and credentials.</Text>
@@ -113,6 +133,7 @@ export default function DiaryScreen() {
                 entries={entries.filter((e) => e.meal_id === meal.id)}
                 onAdd={() => router.push(`/diary/add?meal_id=${meal.id}&date=${date}`)}
                 onDelete={(id) => del.mutate(id)}
+                onEditEntry={openEdit}
               />
             ))}
             {orphanEntries.length > 0 ? (
@@ -124,6 +145,24 @@ export default function DiaryScreen() {
                 showAdd={false}
               />
             ) : null}
+
+            {/* Box acqua: in fondo a tutti i pasti, progresso verso l'obiettivo e oltre. */}
+            <WaterCounter
+              date={date}
+              targetMl={bodyMetricsFromProfile(p)?.waterMl ?? 2500}
+            />
+
+            {/* Suggeritore IA: cosa mangiare per chiudere i macro mancanti del giorno. */}
+            <Pressable
+              style={styles.suggestBtn}
+              onPress={() => router.push(`/diary/suggest?date=${date}`)}
+            >
+              <Icon name="bulb" size={20} color={colors.onPrimary} />
+              <Text style={styles.suggestText}>What should I eat?</Text>
+            </Pressable>
+            <Text style={styles.suggestHint}>
+              Get an AI suggestion to reach today's goal.
+            </Text>
           </>
         )}
       </ScrollView>
@@ -134,6 +173,9 @@ export default function DiaryScreen() {
 const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
+
+  titleBar: { paddingHorizontal: 16, paddingBottom: 4, backgroundColor: colors.bg },
+  heading: { color: colors.text, fontSize: 28, fontWeight: "800" },
 
   header: {
     flexDirection: "row",
@@ -164,4 +206,17 @@ const makeStyles = (colors: ThemeColors) =>
   macroCols: { flexDirection: "row", gap: 12, marginTop: 6 },
 
   error: { color: colors.primary, fontSize: 13, textAlign: "center" },
+
+  suggestBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: colors.primary,
+    borderRadius: 16,
+    paddingVertical: 16,
+    marginTop: 4,
+  },
+  suggestText: { color: colors.onPrimary, fontSize: 16, fontWeight: "800" },
+  suggestHint: { color: colors.textMuted, fontSize: 12, textAlign: "center", marginTop: -6 },
 });

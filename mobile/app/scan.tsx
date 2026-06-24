@@ -31,7 +31,7 @@ export default function ScanScreen() {
       <ScreenHeader title="Scan barcode" />
 
       {!permission ? (
-        <ActivityIndicator color={colors.protein} style={{ marginTop: 24 }} />
+        <ActivityIndicator color={colors.primary} style={{ marginTop: 24 }} />
       ) : !permission.granted ? (
         <View style={styles.center}>
           <Text style={styles.info}>Camera permission is needed to scan products.</Text>
@@ -61,7 +61,7 @@ export default function ScanScreen() {
             {!code ? (
               <Text style={styles.hint}>Point at the product barcode.</Text>
             ) : lookup.isLoading ? (
-              <ActivityIndicator color={colors.protein} />
+              <ActivityIndicator color={colors.primary} />
             ) : lookup.isError ? (
               <Text style={styles.error}>Network error during lookup. Try again.</Text>
             ) : lookup.data ? (
@@ -111,13 +111,13 @@ const makeStyles = (colors: ThemeColors) =>
   info: { color: colors.text, fontSize: 14, textAlign: "center" },
   link: { color: colors.water, fontSize: 14, fontWeight: "700", textAlign: "center" },
   btn: {
-    backgroundColor: colors.protein,
+    backgroundColor: colors.primary,
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 20,
     alignItems: "center",
   },
   again: { backgroundColor: colors.surfaceAlt },
-  btnText: { color: "#fff", fontWeight: "800" },
+  btnText: { color: colors.onPrimary, fontWeight: "800" },
   error: { color: colors.fat, fontSize: 14, textAlign: "center" },
 });

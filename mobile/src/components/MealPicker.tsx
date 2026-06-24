@@ -24,13 +24,13 @@ export function MealPicker({ meals, loading, value, onChange }: Props) {
     if (!valid && meals.length > 0) onChange(meals[0]!.id);
   }, [valid, meals, onChange]);
 
-  if (loading) return <ActivityIndicator color={colors.protein} style={{ marginVertical: 8 }} />;
+  if (loading) return <ActivityIndicator color={colors.primary} style={{ marginVertical: 8 }} />;
   if (meals.length === 0) {
     return <Text style={styles.empty}>No meals. Create one from Profile → Meals.</Text>;
   }
 
   return (
-    <ScrollView
+    <ScrollView showsVerticalScrollIndicator={false}
       horizontal
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.row}

@@ -30,6 +30,6 @@ const makeStyles = (colors: ThemeColors) =>
     backgroundColor: colors.bg,
   },
   back: { paddingRight: 4 },
-  backText: { color: colors.protein, fontSize: 34, lineHeight: 34, fontWeight: "400" },
+  backText: { color: colors.primary, fontSize: 34, lineHeight: 34, fontWeight: "400" },
   title: { color: colors.text, fontSize: 22, fontWeight: "800" },
 });

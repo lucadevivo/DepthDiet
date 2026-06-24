@@ -10,13 +10,17 @@ interface Props {
   value: string;
   onPress?: () => void;
   locked?: boolean;
+  /** La card apre una spiegazione: mostra una "lampadina" invece della freccetta. */
+  info?: boolean;
 }
 
 /**
  * Riga-metrica in stile "Macros": tile con icona colorata, etichetta maiuscola
- * grigia, valore in evidenza e chevron. Usabile come bottone (con onPress).
+ * grigia, valore in evidenza e indicatore a destra. Usabile come bottone (onPress).
+ * Con `info` l'indicatore è una lampadina (apre una spiegazione), altrimenti una
+ * freccetta (navigazione).
  */
-export function MetricCard({ icon, iconColor, label, value, onPress, locked }: Props) {
+export function MetricCard({ icon, iconColor, label, value, onPress, locked, info }: Props) {
   const { colors, styles } = useThemed(makeStyles);
   const tint = iconColor ?? colors.primary;
   const Container: typeof Pressable | typeof View = onPress ? Pressable : View;
@@ -31,6 +35,8 @@ export function MetricCard({ icon, iconColor, label, value, onPress, locked }: P
       </View>
       {locked ? (
         <Icon name="settings" size={16} color={colors.textMuted} />
+      ) : info ? (
+        <Icon name="bulb" size={20} color={colors.textMuted} />
       ) : onPress ? (
         <Icon name="chevron" size={18} color={colors.textMuted} />
       ) : null}

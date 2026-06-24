@@ -1,11 +1,13 @@
-import { useState } from "react";
-import { ScrollView, View, Text, Pressable, ActivityIndicator, StyleSheet } from "react-native";
+import { useEffect, useState } from "react";
+import { ScrollView, View, Text, Pressable, Modal, ActivityIndicator, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme, useThemed } from "../../src/theme/ThemeProvider";
 import type { ThemeColors } from "../../src/theme/colors";
 import { useProfileQuery, useUpdateDiet } from "../../src/hooks/useProfile";
 import { MacroDonut } from "../../src/components/MacroDonut";
+import { MetricCard } from "../../src/components/MetricCard";
 import { NumberField } from "../../src/components/NumberField";
+import { SegmentedControl } from "../../src/components/SegmentedControl";
 import { Icon } from "../../src/components/Icon";
 import {
   DIET_PRESET_OPTIONS,
@@ -28,11 +30,22 @@ export default function GoalsScreen() {
   const profile = useProfileQuery();
   const updateDiet = useUpdateDiet();
   const p = profile.data;
+  const [infoOpen, setInfoOpen] = useState(false);
+  // Selezione "ottimistica" del preset: l'evidenza si sposta SUBITO sul preset
+  // toccato, senza aspettare la mutazione (altrimenti per un istante resta il
+  // vecchio valore della cache → flash visivo). `picked` torna null quando il
+  // preset salvato cambia davvero. L'editor custom è aperto se il selezionato è custom.
+  const [picked, setPicked] = useState<DietPreset | null>(null);
+  useEffect(() => {
+    setPicked(null);
+  }, [p?.diet_preset]);
+  const selectedPreset: DietPreset = picked ?? p?.diet_preset ?? "standard";
+  const customOpen = selectedPreset === "custom";
 
   const noTargets = !p || p.target_calories == null;
 
   return (
-    <ScrollView
+    <ScrollView showsVerticalScrollIndicator={false}
       style={styles.screen}
       contentContainerStyle={[styles.content, { paddingTop: insets.top + 8 }]}
       keyboardShouldPersistTaps="handled"
@@ -47,11 +60,16 @@ export default function GoalsScreen() {
         </View>
       ) : (
         <>
-          {/* Fabbisogno calorico giornaliero (numero grande). */}
-          <View style={styles.heroCard}>
-            <Text style={styles.heroKicker}>DAILY CALORIC REQUIREMENT</Text>
-            <Text style={styles.heroValue}>{p!.target_calories} kcal</Text>
-          </View>
+          {/* Fabbisogno calorico giornaliero: stile metrica (come BMR/BMI). Tap → spiegazione.
+              Colore icona FISSO (non segue l'accento del tema). */}
+          <MetricCard
+            icon="goal"
+            iconColor="#22C55E"
+            label="Daily caloric requirement"
+            value={`${p!.target_calories} kcal`}
+            onPress={() => setInfoOpen(true)}
+            info
+          />
 
           {/* Macronutrienti correnti. */}
           <View style={styles.card}>
@@ -68,7 +86,7 @@ export default function GoalsScreen() {
             <Text style={styles.cardTitle}>Diet preset</Text>
             <View style={{ gap: 8 }}>
               {DIET_PRESET_OPTIONS.map((opt) => {
-                const active = p!.diet_preset === opt.value;
+                const active = opt.value === selectedPreset;
                 const desc =
                   opt.value === "custom"
                     ? p!.diet_preset === "custom" && p!.diet_carbs_pct != null
@@ -77,15 +95,16 @@ export default function GoalsScreen() {
                           protein_pct: p!.diet_protein_pct ?? 0,
                           fat_pct: p!.diet_fat_pct ?? 0,
                         })
-                      : "Free percentages"
+                      : "Custom split (% or g/kg)"
                     : pctLabel(opt.pct!);
                 return (
                   <Pressable
                     key={opt.value}
                     disabled={updateDiet.isPending}
                     onPress={() => {
-                      if (opt.value === "custom") return; // gestito dall'editor sotto
-                      if (active) return;
+                      setPicked(opt.value); // evidenza immediata (no flash)
+                      if (opt.value === "custom") return; // apre l'editor, niente mutazione
+                      if (opt.value === p!.diet_preset) return; // già salvato
                       updateDiet.mutate({ diet_preset: opt.value });
                     }}
                     style={[styles.presetRow, active && styles.presetRowActive]}
@@ -102,84 +121,195 @@ export default function GoalsScreen() {
               })}
             </View>
 
-            <CustomEditor
-              active={p!.diet_preset === "custom"}
-              initial={
-                p!.diet_carbs_pct != null
-                  ? {
-                      carbs_pct: p!.diet_carbs_pct,
-                      protein_pct: p!.diet_protein_pct ?? 0,
-                      fat_pct: p!.diet_fat_pct ?? 0,
-                    }
-                  : { carbs_pct: 40, protein_pct: 30, fat_pct: 30 }
-              }
-              pending={updateDiet.isPending}
-              onApply={(custom_pct) => updateDiet.mutate({ diet_preset: "custom", custom_pct })}
-            />
+            {customOpen ? (
+              <CustomEditor
+                initial={
+                  p!.diet_carbs_pct != null
+                    ? {
+                        carbs_pct: p!.diet_carbs_pct,
+                        protein_pct: p!.diet_protein_pct ?? 0,
+                        fat_pct: p!.diet_fat_pct ?? 0,
+                      }
+                    : { carbs_pct: 40, protein_pct: 30, fat_pct: 30 }
+                }
+                weightKg={p!.weight_kg ?? 0}
+                targetCalories={p!.target_calories ?? 0}
+                pending={updateDiet.isPending}
+                onApply={(custom_pct) => updateDiet.mutate({ diet_preset: "custom", custom_pct })}
+              />
+            ) : null}
 
             {updateDiet.isError ? (
               <Text style={styles.errorText}>Could not update. Try again.</Text>
             ) : null}
           </View>
 
+          <Modal
+            visible={infoOpen}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setInfoOpen(false)}
+          >
+            <Pressable style={styles.infoBackdrop} onPress={() => setInfoOpen(false)}>
+              <Pressable style={styles.infoCard} onPress={() => {}}>
+                <Text style={styles.infoTitle}>Daily caloric requirement</Text>
+                <Text style={styles.infoText}>
+                  The total calories you should eat per day to reach your goal. It starts from the
+                  energy you burn in a day (your maintenance, or TDEE) and adjusts it for your goal —
+                  a deficit to lose weight, a surplus to gain. Your macros below are split from this
+                  number.
+                </Text>
+                <Pressable style={styles.infoBtn} onPress={() => setInfoOpen(false)}>
+                  <Text style={styles.infoBtnText}>Got it</Text>
+                </Pressable>
+              </Pressable>
+            </Pressable>
+          </Modal>
         </>
       )}
     </ScrollView>
   );
 }
 
-/** Editor delle percentuali custom: 3 campi + Apply, valida la somma ≈ 100. */
+type CustomMode = "pct" | "gkg";
+const MODE_OPTIONS: { value: CustomMode; label: string }[] = [
+  { value: "pct", label: "Percent" },
+  { value: "gkg", label: "g per kg" },
+];
+
+/**
+ * Editor della ripartizione custom dei macro, in due modi:
+ *  - Percent: 3 percentuali (C/P/F) che sommano a 100;
+ *  - g per kg: proteine e grassi in grammi per kg di peso (esatti), i carboidrati
+ *    riempiono le calorie giornaliere rimanenti. Se proteine+grassi superano già
+ *    le calorie obiettivo, mostra errore e non applica.
+ * In entrambi i casi si applica come `custom_pct` (percentuali) all'endpoint dieta.
+ */
 function CustomEditor({
-  active,
   initial,
+  weightKg,
+  targetCalories,
   pending,
   onApply,
 }: {
-  active: boolean;
   initial: MacroPercentages;
+  weightKg: number;
+  targetCalories: number;
   pending: boolean;
   onApply: (pct: MacroPercentages) => void;
 }) {
   const { colors, styles } = useThemed(makeStyles);
-  const [open, setOpen] = useState(active);
+  const [mode, setMode] = useState<CustomMode>("pct");
+
+  // --- Percent ---
   const [carbs, setCarbs] = useState(String(initial.carbs_pct));
   const [protein, setProtein] = useState(String(initial.protein_pct));
   const [fat, setFat] = useState(String(initial.fat_pct));
-
   const c = Number.parseInt(carbs, 10);
   const pr = Number.parseInt(protein, 10);
   const f = Number.parseInt(fat, 10);
   const sum = (Number.isFinite(c) ? c : 0) + (Number.isFinite(pr) ? pr : 0) + (Number.isFinite(f) ? f : 0);
-  const valid = [c, pr, f].every((x) => Number.isFinite(x) && x >= 0 && x <= 100) && Math.abs(sum - 100) <= 1;
+  const pctValid =
+    [c, pr, f].every((x) => Number.isFinite(x) && x >= 0 && x <= 100) && Math.abs(sum - 100) <= 1;
 
-  if (!open) {
-    return (
-      <Pressable style={styles.customToggle} onPress={() => setOpen(true)}>
-        <Text style={styles.customToggleText}>Set custom percentages</Text>
-        <Icon name="chevron" size={16} color={colors.textMuted} />
-      </Pressable>
-    );
-  }
+  // --- g per kg (proteine + grassi; i carbo riempiono) ---
+  const [proteinPerKg, setProteinPerKg] = useState("");
+  const [fatPerKg, setFatPerKg] = useState("");
+  const ppk = Number.parseFloat(proteinPerKg);
+  const fpk = Number.parseFloat(fatPerKg);
+  const gkgInputsOk = Number.isFinite(ppk) && ppk > 0 && Number.isFinite(fpk) && fpk > 0 && weightKg > 0;
+  const proteinG = gkgInputsOk ? ppk * weightKg : 0;
+  const fatG = gkgInputsOk ? fpk * weightKg : 0;
+  const pfKcal = proteinG * 4 + fatG * 9;
+  const remainingKcal = targetCalories - pfKcal;
+  const carbsG = remainingKcal > 0 ? remainingKcal / 4 : 0;
+  const gkgOver = gkgInputsOk && remainingKcal <= 0; // proteine+grassi sforano le calorie
+  const gkgValid = gkgInputsOk && remainingKcal > 0 && targetCalories > 0;
+
+  const applyGkg = () => {
+    if (!gkgValid) return;
+    // Percentuali precise sulle calorie obiettivo: riproducono i grammi esatti di
+    // proteine/grassi; i carboidrati prendono il resto.
+    const protein_pct = (proteinG * 4) / targetCalories * 100;
+    const fat_pct = (fatG * 9) / targetCalories * 100;
+    const carbs_pct = 100 - protein_pct - fat_pct;
+    onApply({ carbs_pct, protein_pct, fat_pct });
+  };
 
   return (
     <View style={styles.customBox}>
-      <View style={styles.fieldRow}>
-        <NumberField label="Carbs %" value={carbs} onChangeText={setCarbs} unit="%" />
-        <NumberField label="Protein %" value={protein} onChangeText={setProtein} unit="%" />
-        <NumberField label="Fat %" value={fat} onChangeText={setFat} unit="%" />
-      </View>
-      <Text style={[styles.sumText, !valid && styles.sumTextBad]}>Total: {sum}% (must be 100%)</Text>
-      <Pressable
-        disabled={!valid || pending}
-        onPress={() => onApply({ carbs_pct: c, protein_pct: pr, fat_pct: f })}
-        style={[styles.applyBtn, (!valid || pending) && styles.applyBtnDisabled]}
-      >
-        {pending ? (
-          <ActivityIndicator color={colors.onPrimary} />
-        ) : (
-          <Text style={styles.applyText}>Apply custom split</Text>
-        )}
-      </Pressable>
+      <SegmentedControl options={MODE_OPTIONS} value={mode} onChange={setMode} />
+
+      {mode === "pct" ? (
+        <>
+          <View style={styles.fieldRow}>
+            <NumberField label="Carbs %" value={carbs} onChangeText={setCarbs} unit="%" />
+            <NumberField label="Protein %" value={protein} onChangeText={setProtein} unit="%" />
+            <NumberField label="Fat %" value={fat} onChangeText={setFat} unit="%" />
+          </View>
+          <Text style={[styles.sumText, !pctValid && styles.sumTextBad]}>
+            Total: {sum}% (must be 100%)
+          </Text>
+          <Pressable
+            disabled={!pctValid || pending}
+            onPress={() => onApply({ carbs_pct: c, protein_pct: pr, fat_pct: f })}
+            style={[styles.applyBtn, (!pctValid || pending) && styles.applyBtnDisabled]}
+          >
+            {pending ? (
+              <ActivityIndicator color={colors.onPrimary} />
+            ) : (
+              <Text style={styles.applyText}>Apply custom split</Text>
+            )}
+          </Pressable>
+        </>
+      ) : (
+        <>
+          <Text style={styles.gkgHint}>
+            Set protein and fat per kg of body weight ({weightKg} kg). Carbs fill the rest of your{" "}
+            {targetCalories} kcal goal.
+          </Text>
+          <View style={styles.fieldRow}>
+            <NumberField
+              label="Protein"
+              value={proteinPerKg}
+              onChangeText={setProteinPerKg}
+              unit="g/kg"
+              placeholder="e.g. 2"
+            />
+            <NumberField
+              label="Fat"
+              value={fatPerKg}
+              onChangeText={setFatPerKg}
+              unit="g/kg"
+              placeholder="e.g. 1"
+            />
+          </View>
+
+          {gkgOver ? (
+            <Text style={styles.sumTextBad}>
+              Protein + fat already use {Math.round(pfKcal)} kcal, over your {targetCalories} kcal
+              goal. Lower them.
+            </Text>
+          ) : gkgValid ? (
+            <Text style={styles.gkgPreview}>
+              Protein {Math.round(proteinG)} g · Carbs {Math.round(carbsG)} g · Fat{" "}
+              {Math.round(fatG)} g
+            </Text>
+          ) : null}
+
+          <Pressable
+            disabled={!gkgValid || pending}
+            onPress={applyGkg}
+            style={[styles.applyBtn, (!gkgValid || pending) && styles.applyBtnDisabled]}
+          >
+            {pending ? (
+              <ActivityIndicator color={colors.onPrimary} />
+            ) : (
+              <Text style={styles.applyText}>Apply custom split</Text>
+            )}
+          </Pressable>
+        </>
+      )}
     </View>
   );
 }
@@ -190,16 +320,32 @@ const makeStyles = (colors: ThemeColors) =>
   content: { padding: 16, gap: 16, paddingBottom: 40 },
   heading: { color: colors.text, fontSize: 28, fontWeight: "800" },
 
-  heroCard: {
+  infoBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 28,
+  },
+  infoCard: {
     backgroundColor: colors.surface,
     borderRadius: 18,
-    padding: 22,
-    gap: 6,
+    padding: 20,
+    gap: 12,
     borderWidth: 1,
     borderColor: colors.border,
+    width: "100%",
   },
-  heroKicker: { color: colors.textMuted, fontSize: 12, fontWeight: "700", letterSpacing: 1 },
-  heroValue: { color: colors.primary, fontSize: 38, fontWeight: "800" },
+  infoTitle: { color: colors.text, fontSize: 18, fontWeight: "800" },
+  infoText: { color: colors.textMuted, fontSize: 14, lineHeight: 20 },
+  infoBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+    marginTop: 4,
+  },
+  infoBtnText: { color: colors.onPrimary, fontSize: 15, fontWeight: "800" },
 
   card: {
     backgroundColor: colors.surface,
@@ -225,12 +371,12 @@ const makeStyles = (colors: ThemeColors) =>
   presetLabelActive: { color: colors.primary },
   presetDesc: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
 
-  customToggle: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 4 },
-  customToggleText: { color: colors.textMuted, fontSize: 13, fontWeight: "700" },
   customBox: { gap: 12, backgroundColor: colors.surfaceAlt, borderRadius: 12, padding: 14 },
   fieldRow: { flexDirection: "row", gap: 10 },
   sumText: { color: colors.textMuted, fontSize: 12, fontWeight: "600" },
-  sumTextBad: { color: colors.fat },
+  sumTextBad: { color: colors.fat, fontSize: 12, fontWeight: "600", lineHeight: 17 },
+  gkgHint: { color: colors.textMuted, fontSize: 12, lineHeight: 17 },
+  gkgPreview: { color: colors.text, fontSize: 13, fontWeight: "700" },
   applyBtn: { backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14, alignItems: "center" },
   applyBtnDisabled: { opacity: 0.5 },
   applyText: { color: colors.onPrimary, fontSize: 15, fontWeight: "800" },

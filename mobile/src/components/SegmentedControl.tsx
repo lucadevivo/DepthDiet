@@ -44,7 +44,7 @@ const makeStyles = (colors: ThemeColors) =>
     gap: 4,
   },
   segment: { flex: 1, paddingVertical: 10, borderRadius: 9, alignItems: "center" },
-  segmentActive: { backgroundColor: colors.protein },
+  segmentActive: { backgroundColor: colors.primary },
   text: { color: colors.textMuted, fontSize: 14, fontWeight: "700" },
-  textActive: { color: "#fff" },
+  textActive: { color: colors.onPrimary },
 });

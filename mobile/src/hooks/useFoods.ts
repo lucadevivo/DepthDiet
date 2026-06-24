@@ -4,9 +4,12 @@ import {
   createRecipe,
   deleteFood,
   deleteRecipe,
+  getFood,
   listFoods,
   listRecipes,
+  updateFood,
 } from "../api/foods";
+import type { CustomFoodInput } from "../types/food";
 
 export const foodsKey = ["foods"] as const;
 export const recipesKey = ["recipes"] as const;
@@ -15,6 +18,25 @@ export function useFoodsQuery(query?: string) {
   return useQuery({
     queryKey: [...foodsKey, query ?? ""],
     queryFn: () => listFoods(query),
+  });
+}
+
+export function useFoodQuery(id: number | null) {
+  return useQuery({
+    queryKey: [...foodsKey, "byId", id],
+    queryFn: () => getFood(id!),
+    enabled: id != null,
+  });
+}
+
+export function useUpdateFood() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: number; input: CustomFoodInput }) => updateFood(vars.id, vars.input),
+    onSuccess: (food) => {
+      qc.invalidateQueries({ queryKey: foodsKey });
+      qc.setQueryData([...foodsKey, "byId", food.id], food);
+    },
   });
 }
 

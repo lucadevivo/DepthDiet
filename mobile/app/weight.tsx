@@ -44,7 +44,7 @@ export default function WeightScreen() {
   return (
     <View style={styles.screen}>
       <ScreenHeader title="Weight" />
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {/* Registrazione */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Log today's weight</Text>
@@ -78,7 +78,7 @@ export default function WeightScreen() {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Trend</Text>
           {weights.isLoading ? (
-            <ActivityIndicator color={colors.protein} />
+            <ActivityIndicator color={colors.primary} />
           ) : (
             <Sparkline values={data.map((d) => d.weight_kg)} color={colors.water} />
           )}
@@ -124,7 +124,7 @@ function AdaptiveCard({
     <View style={[styles.card, styles.adaptiveCard]}>
       <Text style={styles.cardTitle}>Adaptive TDEE</Text>
       {loading ? (
-        <ActivityIndicator color={colors.protein} />
+        <ActivityIndicator color={colors.primary} />
       ) : error ? (
         <Text style={styles.errorText}>Imposta gli obiettivi nel Calcolatore per il Adaptive TDEE.</Text>
       ) : data ? (
@@ -137,7 +137,7 @@ function AdaptiveCard({
           {data.hasEnoughData && data.adjustmentKcal !== 0 ? (
             <Pressable onPress={onApply} disabled={applying} style={[styles.applyBtn, applying && styles.disabled]}>
               {applying ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={colors.onPrimary} />
               ) : (
                 <Text style={styles.applyText}>
                   Apply → {data.suggestedTargetCalories} kcal
@@ -176,7 +176,7 @@ const makeStyles = (colors: ThemeColors) =>
     borderWidth: 1,
     borderColor: colors.border,
   },
-  adaptiveCard: { borderColor: colors.protein },
+  adaptiveCard: { borderColor: colors.primary },
   cardTitle: { color: colors.text, fontSize: 16, fontWeight: "700" },
   logRow: { flexDirection: "row", alignItems: "flex-end", gap: 10 },
   btn: { backgroundColor: colors.calories, borderRadius: 12, paddingVertical: 14, paddingHorizontal: 20, alignItems: "center" },
@@ -188,8 +188,8 @@ const makeStyles = (colors: ThemeColors) =>
   trendValue: { color: colors.text, fontSize: 18, fontWeight: "800" },
   trendLabel: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
   reason: { color: colors.textMuted, fontSize: 13, lineHeight: 18 },
-  applyBtn: { backgroundColor: colors.protein, borderRadius: 12, paddingVertical: 14, alignItems: "center" },
-  applyText: { color: "#fff", fontSize: 15, fontWeight: "800" },
+  applyBtn: { backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14, alignItems: "center" },
+  applyText: { color: colors.onPrimary, fontSize: 15, fontWeight: "800" },
   success: { color: colors.calories, fontSize: 13, fontWeight: "600" },
   errorText: { color: colors.textMuted, fontSize: 13 },
 

@@ -33,7 +33,7 @@ export function OffProductRow({ product, status, onImport }: Props) {
 
 function ImportButton({ status, onPress }: { status: ImportStatus; onPress: () => void }) {
   const { colors, styles } = useThemed(makeStyles);
-  if (status === "pending") return <ActivityIndicator color={colors.protein} />;
+  if (status === "pending") return <ActivityIndicator color={colors.primary} />;
   if (status === "done") return <Text style={[styles.tag, { color: colors.calories }]}>✓ Imported</Text>;
   if (status === "duplicate") return <Text style={[styles.tag, { color: colors.textMuted }]}>Already added</Text>;
   return (
@@ -58,7 +58,7 @@ const makeStyles = (colors: ThemeColors) =>
   name: { color: colors.text, fontSize: 14, fontWeight: "700" },
   brand: { color: colors.textMuted, fontWeight: "500" },
   meta: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
-  btn: { backgroundColor: colors.protein, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 14 },
-  btnText: { color: "#fff", fontWeight: "800", fontSize: 13 },
+  btn: { backgroundColor: colors.primary, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 14 },
+  btnText: { color: colors.onPrimary, fontWeight: "800", fontSize: 13 },
   tag: { fontSize: 12, fontWeight: "700" },
 });

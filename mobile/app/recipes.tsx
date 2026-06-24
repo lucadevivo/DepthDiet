@@ -5,12 +5,14 @@ import {
   Text,
   TextInput,
   Pressable,
+  Modal,
   ActivityIndicator,
   StyleSheet,
 } from "react-native";
 import { ScreenHeader } from "../src/components/ScreenHeader";
 import { NumberField } from "../src/components/NumberField";
-import { useTheme, useThemed } from "../src/theme/ThemeProvider";
+import { Icon } from "../src/components/Icon";
+import { useThemed } from "../src/theme/ThemeProvider";
 import type { ThemeColors } from "../src/theme/colors";
 import {
   useCreateRecipe,
@@ -18,6 +20,7 @@ import {
   useFoodsQuery,
   useRecipesQuery,
 } from "../src/hooks/useFoods";
+import type { CustomFood } from "../src/types/food";
 
 interface DraftItem {
   food_id: number;
@@ -34,16 +37,21 @@ export default function RecipesScreen() {
 
   const [name, setName] = useState("");
   const [items, setItems] = useState<DraftItem[]>([]);
-  const [pickedFood, setPickedFood] = useState<number | null>(null);
-  const [grams, setGrams] = useState("");
+  // Food in fase di aggiunta: si sceglie la grammatura nel modale, come nel diario.
+  const [picking, setPicking] = useState<CustomFood | null>(null);
+  const [modalGrams, setModalGrams] = useState("");
 
-  const addItem = () => {
-    const g = Number.parseFloat(grams);
-    const food = (foods.data ?? []).find((x) => x.id === pickedFood);
-    if (!food || !Number.isFinite(g) || g <= 0) return;
-    setItems((prev) => [...prev, { food_id: food.id, grams: g, name: food.name }]);
-    setPickedFood(null);
-    setGrams("");
+  const openGrams = (food: CustomFood) => {
+    setPicking(food);
+    setModalGrams(String(food.default_serving_g ?? 100));
+  };
+
+  const confirmGrams = () => {
+    const g = Number.parseFloat(modalGrams);
+    if (!picking || !Number.isFinite(g) || g <= 0) return;
+    setItems((prev) => [...prev, { food_id: picking.id, grams: g, name: picking.name }]);
+    setPicking(null);
+    setModalGrams("");
   };
 
   const removeItem = (idx: number) => setItems((prev) => prev.filter((_, i) => i !== idx));
@@ -65,7 +73,7 @@ export default function RecipesScreen() {
   return (
     <View style={styles.screen}>
       <ScreenHeader title="Recipes" />
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.card}>
           <Text style={styles.cardTitle}>New recipe</Text>
           <TextInput
@@ -89,38 +97,21 @@ export default function RecipesScreen() {
           ))}
 
           <Text style={styles.sub}>Add ingredient</Text>
+          <Text style={styles.hint}>Tap a food, then choose how many grams.</Text>
           {foods.isLoading ? (
-            <ActivityIndicator color={colors.protein} />
+            <ActivityIndicator color={colors.primary} />
           ) : (foods.data ?? []).length === 0 ? (
             <Text style={styles.empty}>Create some foods first.</Text>
           ) : (
             <View style={{ gap: 6 }}>
-              {(foods.data ?? []).map((food) => {
-                const active = food.id === pickedFood;
-                return (
-                  <Pressable
-                    key={food.id}
-                    onPress={() => setPickedFood(food.id)}
-                    style={[styles.pick, active && styles.pickActive]}
-                  >
-                    <Text style={[styles.pickText, active && styles.pickTextActive]}>
-                      {food.name}
-                    </Text>
-                  </Pressable>
-                );
-              })}
+              {(foods.data ?? []).map((food) => (
+                <Pressable key={food.id} onPress={() => openGrams(food)} style={styles.pick}>
+                  <Text style={styles.pickText}>{food.name}</Text>
+                  <Icon name="add" size={18} color={colors.primary} />
+                </Pressable>
+              ))}
             </View>
           )}
-          <View style={styles.addRow}>
-            <NumberField label="Grams" value={grams} onChangeText={setGrams} unit="g" />
-            <Pressable
-              onPress={addItem}
-              disabled={pickedFood == null}
-              style={[styles.addBtn, pickedFood == null && styles.disabled]}
-            >
-              <Text style={styles.addText}>+ Item</Text>
-            </Pressable>
-          </View>
 
           <Pressable
             onPress={onSave}
@@ -137,7 +128,7 @@ export default function RecipesScreen() {
 
         <Text style={styles.listTitle}>Your recipes</Text>
         {recipes.isLoading ? (
-          <ActivityIndicator color={colors.protein} />
+          <ActivityIndicator color={colors.primary} />
         ) : recipes.isError ? (
           <Text style={styles.error}>Could not load.</Text>
         ) : (recipes.data ?? []).length === 0 ? (
@@ -158,6 +149,27 @@ export default function RecipesScreen() {
           ))
         )}
       </ScrollView>
+
+      {/* Modale grammatura ingrediente. */}
+      <Modal
+        visible={picking != null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPicking(null)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setPicking(null)}>
+          <Pressable style={styles.modalCard} onPress={() => {}}>
+            <Text style={styles.modalTitle}>{picking?.name}</Text>
+            <NumberField label="Grams" value={modalGrams} onChangeText={setModalGrams} unit="g" />
+            <Pressable
+              onPress={confirmGrams}
+              style={[styles.btn, { marginTop: 0 }]}
+            >
+              <Text style={styles.btnText}>Add ingredient</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -196,26 +208,36 @@ const makeStyles = (colors: ThemeColors) =>
     paddingVertical: 10,
   },
   itemText: { color: colors.text, fontSize: 14 },
+  hint: { color: colors.textMuted, fontSize: 12, marginTop: -4 },
   pick: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     backgroundColor: colors.surfaceAlt,
     borderRadius: 10,
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  pickActive: { borderColor: colors.protein },
-  pickText: { color: colors.text, fontSize: 14 },
-  pickTextActive: { color: colors.protein, fontWeight: "700" },
-  addRow: { flexDirection: "row", alignItems: "flex-end", gap: 10 },
-  addBtn: {
-    backgroundColor: colors.protein,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+  pickText: { color: colors.text, fontSize: 14, fontWeight: "600" },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
     alignItems: "center",
+    justifyContent: "center",
+    padding: 28,
   },
-  addText: { color: "#fff", fontWeight: "800" },
+  modalCard: {
+    width: "100%",
+    backgroundColor: colors.surface,
+    borderRadius: 18,
+    padding: 20,
+    gap: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  modalTitle: { color: colors.text, fontSize: 18, fontWeight: "800" },
   btn: { backgroundColor: colors.calories, borderRadius: 12, paddingVertical: 14, alignItems: "center", marginTop: 4 },
   disabled: { opacity: 0.4 },
   btnText: { color: colors.onPrimary, fontSize: 15, fontWeight: "800" },

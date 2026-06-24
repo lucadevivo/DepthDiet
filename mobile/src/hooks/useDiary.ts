@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { addDiaryEntry, deleteDiaryEntry, getDiaryDay } from "../api/diary";
+import { addDiaryEntry, deleteDiaryEntry, getDiaryDay, updateDiaryEntry } from "../api/diary";
 
 export const diaryKey = (date: string) => ["diary", date] as const;
 
@@ -19,6 +19,14 @@ export function useDeleteDiaryEntry(date: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: deleteDiaryEntry,
+    onSuccess: () => qc.invalidateQueries({ queryKey: diaryKey(date) }),
+  });
+}
+
+export function useUpdateDiaryEntry(date: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: number; grams: number }) => updateDiaryEntry(vars.id, vars.grams),
     onSuccess: () => qc.invalidateQueries({ queryKey: diaryKey(date) }),
   });
 }

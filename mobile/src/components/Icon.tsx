@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import type { ColorValue } from "react-native";
-import { useTheme, useThemed } from "../theme/ThemeProvider";
-import type { ThemeColors } from "../theme/colors";
+import { useTheme } from "../theme/ThemeProvider";
 
 /**
  * Set di icone dell'app, mappate su Ionicons (font-based: nessun modulo nativo
@@ -21,11 +21,16 @@ const MAP = {
   chevron: "chevron-forward",
   close: "close",
   add: "add",
+  remove: "remove",
   menu: "ellipsis-vertical",
+  drag: "reorder-three-outline",
 
   // Azioni / sezioni
   scan: "scan-outline",
+  search: "search-outline",
   camera: "camera-outline",
+  flash: "flash",
+  flashOff: "flash-off",
   gallery: "images-outline",
   food: "nutrition-outline",
   recipe: "restaurant-outline",
@@ -33,6 +38,7 @@ const MAP = {
   barcode: "barcode-outline",
   bulb: "bulb-outline",
   ruler: "resize-outline",
+  info: "information-circle-outline",
 
   // Metriche
   calories: "flame",
@@ -40,6 +46,7 @@ const MAP = {
   bodyfat: "fitness-outline",
   water: "water",
   weight: "barbell-outline",
+  activity: "walk-outline",
   goal: "flag-outline",
   check: "checkmark",
 } as const;
@@ -54,5 +61,11 @@ interface Props {
 
 export function Icon({ name, size = 22, color }: Props) {
   const { colors } = useTheme();
-  return <Ionicons name={MAP[name]} size={size} color={color ?? colors.text} />;
+  const tint = color ?? colors.text;
+  // "food": mela pulita di MaterialCommunityIcons (senza i semini/"occhietti"
+  // dell'icona nutrition di Ionicons).
+  if (name === "food") {
+    return <MaterialCommunityIcons name="food-apple-outline" size={size} color={tint} />;
+  }
+  return <Ionicons name={MAP[name]} size={size} color={tint} />;
 }

@@ -1,94 +1,29 @@
-import { useEffect, useState } from "react";
-import { ScrollView, View, Text, Pressable, ActivityIndicator, StyleSheet } from "react-native";
+import { ScrollView, View, Text, Pressable, Modal, ActivityIndicator, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Link, useRouter } from "expo-router";
+import { useState } from "react";
 import { useTheme, useThemed } from "../../src/theme/ThemeProvider";
 import type { ThemeColors } from "../../src/theme/colors";
-import { NumberField } from "../../src/components/NumberField";
-import { SegmentedControl } from "../../src/components/SegmentedControl";
-import { OptionList } from "../../src/components/OptionList";
 import { StatStrip } from "../../src/components/StatStrip";
 import { MetricCard } from "../../src/components/MetricCard";
 import { Icon } from "../../src/components/Icon";
-import { useProfileQuery, useUpdateProfile } from "../../src/hooks/useProfile";
+import { useProfileQuery } from "../../src/hooks/useProfile";
 import { useAdaptiveQuery } from "../../src/hooks/useWeight";
 import { bodyMetricsFromProfile } from "../../src/lib/bodyMetrics";
-import {
-  ACTIVITY_OPTIONS,
-  GOAL_OPTIONS,
-  SEX_OPTIONS,
-  type ActivityLevel,
-  type Goal,
-  type Profile,
-  type Sex,
-} from "../../src/types/profile";
+import { ACTIVITY_OPTIONS, GOAL_OPTIONS, type Profile } from "../../src/types/profile";
 
 export default function ProfileScreen() {
   const { colors, styles } = useThemed(makeStyles);
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const profileQuery = useProfileQuery();
-  const updateProfile = useUpdateProfile();
-
-  // Stato del form (i numerici come stringa per l'input).
-  const [weight, setWeight] = useState("");
-  const [height, setHeight] = useState("");
-  const [age, setAge] = useState("");
-  const [sex, setSex] = useState<Sex | null>(null);
-  const [activity, setActivity] = useState<ActivityLevel | null>(null);
-  const [goal, setGoal] = useState<Goal | null>(null);
-  const [seeded, setSeeded] = useState(false);
-
-  // Inizializza il form dai dati del profilo, una sola volta.
-  useEffect(() => {
-    const p = profileQuery.data;
-    if (p && !seeded) {
-      if (p.weight_kg != null) setWeight(String(p.weight_kg));
-      if (p.height_cm != null) setHeight(String(p.height_cm));
-      if (p.age != null) setAge(String(p.age));
-      setSex(p.sex);
-      setActivity(p.activity_level);
-      setGoal(p.goal);
-      setSeeded(true);
-    }
-  }, [profileQuery.data, seeded]);
-
-  const w = Number.parseFloat(weight);
-  const h = Number.parseFloat(height);
-  const a = Number.parseInt(age, 10);
-  const valid =
-    Number.isFinite(w) && Number.isFinite(h) && Number.isFinite(a) && !!sex && !!activity && !!goal;
-
-  const onSave = () => {
-    if (!valid) return;
-    // Mantiene il preset dieta corrente; i macro vengono ricalcolati sul nuovo target.
-    updateProfile.mutate({
-      weight_kg: w,
-      height_cm: h,
-      age: a,
-      sex,
-      activity_level: activity,
-      goal,
-      diet_preset: profileQuery.data?.diet_preset ?? "standard",
-      formula: profileQuery.data?.formula ?? "mifflin",
-      body_fat_pct: profileQuery.data?.body_fat_pct ?? null,
-      ...(profileQuery.data?.diet_preset === "custom" &&
-      profileQuery.data.diet_carbs_pct != null
-        ? {
-            custom_pct: {
-              carbs_pct: profileQuery.data.diet_carbs_pct,
-              protein_pct: profileQuery.data.diet_protein_pct ?? 0,
-              fat_pct: profileQuery.data.diet_fat_pct ?? 0,
-            },
-          }
-        : {}),
-    });
-  };
 
   return (
     <ScrollView
       style={styles.screen}
       contentContainerStyle={[styles.content, { paddingTop: insets.top + 8 }]}
       keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
     >
       <Text style={styles.heading}>Profile</Text>
 
@@ -101,6 +36,7 @@ export default function ProfileScreen() {
       ) : (
         <>
           <ProfileStats profile={profileQuery.data} />
+          <ProfileChoices profile={profileQuery.data} />
           <Metrics profile={profileQuery.data} />
           {profileQuery.data?.target_calories != null ? <AdaptiveTdee /> : null}
 
@@ -126,56 +62,14 @@ export default function ProfileScreen() {
             </Link>
           </View>
 
-          <View style={styles.formCard}>
-            <Text style={styles.cardTitle}>Your data</Text>
-            <View style={styles.fieldRow}>
-              <NumberField label="Weight" value={weight} onChangeText={setWeight} unit="kg" />
-              <NumberField label="Height" value={height} onChangeText={setHeight} unit="cm" />
-              <NumberField label="Age" value={age} onChangeText={setAge} unit="y" />
-            </View>
-
-            <Label text="Gender" />
-            <SegmentedControl options={SEX_OPTIONS} value={sex} onChange={setSex} />
-
-            <Label text="Goal" />
-            <OptionList options={GOAL_OPTIONS} value={goal} onChange={setGoal} />
-
-            <Label text="Activity level" />
-            <OptionList options={ACTIVITY_OPTIONS} value={activity} onChange={setActivity} />
-
-            <Pressable
-              onPress={onSave}
-              disabled={!valid || updateProfile.isPending}
-              style={[styles.saveBtn, (!valid || updateProfile.isPending) && styles.saveBtnDisabled]}
-            >
-              {updateProfile.isPending ? (
-                <ActivityIndicator color={colors.onPrimary} />
-              ) : (
-                <Text style={styles.saveText}>Save & compute goals</Text>
-              )}
-            </Pressable>
-
-            {updateProfile.isError ? (
-              <Text style={styles.errorText}>
-                Could not save. Check your connection/credentials and try again.
-              </Text>
-            ) : null}
-            {updateProfile.isSuccess ? (
-              <Text style={styles.successText}>
-                Goals updated — BMR {updateProfile.data.computation.bmr} · TDEE{" "}
-                {updateProfile.data.computation.tdee} kcal
-              </Text>
-            ) : null}
-          </View>
+          <Pressable style={styles.editBtn} onPress={() => router.push("/edit-data")}>
+            <Icon name="profile" size={18} color={colors.onPrimary} />
+            <Text style={styles.editText}>Edit your data</Text>
+          </Pressable>
         </>
       )}
     </ScrollView>
   );
-}
-
-function Label({ text }: { text: string }) {
-  const { colors, styles } = useThemed(makeStyles);
-  return <Text style={styles.fieldLabel}>{text}</Text>;
 }
 
 /** Striscia anagrafica (Height/Weight/Gender/Age) dai dati salvati. */
@@ -203,6 +97,34 @@ function ProfileStats({ profile }: { profile: Profile | undefined }) {
   );
 }
 
+/** Goal e Activity level come dati utente (sola lettura; si modificano in "Your data"). */
+function ProfileChoices({ profile }: { profile: Profile | undefined }) {
+  const { colors, styles } = useThemed(makeStyles);
+  if (!profile || (profile.goal == null && profile.activity_level == null)) return null;
+  const goalLabel = GOAL_OPTIONS.find((o) => o.value === profile.goal)?.label ?? "—";
+  const activityLabel =
+    ACTIVITY_OPTIONS.find((o) => o.value === profile.activity_level)?.label ?? "—";
+  return (
+    <View style={styles.choicesCard}>
+      <View style={styles.choiceRow}>
+        <View style={styles.choiceLabelWrap}>
+          <Icon name="goal" size={18} color={colors.textMuted} />
+          <Text style={styles.choiceLabel}>Goal</Text>
+        </View>
+        <Text style={styles.choiceValue}>{goalLabel}</Text>
+      </View>
+      <View style={styles.choiceSep} />
+      <View style={styles.choiceRow}>
+        <View style={styles.choiceLabelWrap}>
+          <Icon name="activity" size={18} color={colors.textMuted} />
+          <Text style={styles.choiceLabel}>Activity level</Text>
+        </View>
+        <Text style={styles.choiceValue}>{activityLabel}</Text>
+      </View>
+    </View>
+  );
+}
+
 /** TDEE adattivo (dal trend del peso): riepilogo + link alla schermata Weight. */
 function AdaptiveTdee() {
   const { colors } = useTheme();
@@ -225,31 +147,71 @@ function AdaptiveTdee() {
   );
 }
 
-/** Card metriche calcolate: BMR, BMI, fabbisogno idrico. */
+type MetricKey = "bmr" | "bmi" | "water";
+
+/** Colore FISSO dell'icona BMR: non segue l'accento del tema. */
+const BMR_COLOR = "#FF6A3D";
+
+/** Spiegazioni mostrate nel popup quando si tocca una metrica. */
+const METRIC_INFO: Record<MetricKey, { title: string; text: string }> = {
+  bmr: {
+    title: "Basal Metabolic Rate",
+    text: "The calories your body burns at complete rest, just to keep vital functions going — breathing, circulation, brain activity. It's your baseline before any movement or exercise is added.",
+  },
+  bmi: {
+    title: "Body Mass Index",
+    text: "Your weight relative to your height (kg/m²). It's a quick screening number for under-, normal- and over-weight ranges, but it doesn't tell muscle from fat, so treat it as a rough guide.",
+  },
+  water: {
+    title: "Water requirement",
+    text: "An estimate of the fluids your body needs each day, based mainly on your weight. It's a general guideline, not a strict target — your needs rise with heat, exercise and illness.",
+  },
+};
+
+/** Card metriche calcolate: BMR, BMI, fabbisogno idrico. Toccandole si apre la spiegazione. */
 function Metrics({ profile }: { profile: Profile | undefined }) {
   const { colors, styles } = useThemed(makeStyles);
+  const [info, setInfo] = useState<MetricKey | null>(null);
   const m = bodyMetricsFromProfile(profile);
   if (!m) return null;
   return (
     <View style={{ gap: 12 }}>
       <MetricCard
         icon="calories"
-        iconColor={colors.primary}
+        iconColor={BMR_COLOR}
         label="Basal Metabolic Rate"
         value={`${m.bmr} kcal`}
+        onPress={() => setInfo("bmr")}
+        info
       />
       <MetricCard
         icon="bmi"
         iconColor={colors.carbs}
         label="Body Mass Index"
         value={`${m.bmi} · ${m.bmiCategory}`}
+        onPress={() => setInfo("bmi")}
+        info
       />
       <MetricCard
         icon="water"
         iconColor={colors.water}
         label="Water requirement"
         value={`${(m.waterMl / 1000).toFixed(1)} L`}
+        onPress={() => setInfo("water")}
+        info
       />
+
+      <Modal visible={info != null} transparent animationType="fade" onRequestClose={() => setInfo(null)}>
+        <Pressable style={styles.infoBackdrop} onPress={() => setInfo(null)}>
+          <Pressable style={styles.infoCard} onPress={() => {}}>
+            <Text style={styles.infoTitle}>{info ? METRIC_INFO[info].title : ""}</Text>
+            <Text style={styles.infoText}>{info ? METRIC_INFO[info].text : ""}</Text>
+            <Pressable style={styles.infoBtn} onPress={() => setInfo(null)}>
+              <Text style={styles.infoBtnText}>Got it</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -274,9 +236,6 @@ const makeStyles = (colors: ThemeColors) =>
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { padding: 16, gap: 16, paddingBottom: 48 },
   heading: { color: colors.text, fontSize: 28, fontWeight: "800" },
-  titleRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  weightBtn: { flexDirection: "row", alignItems: "center", gap: 6 },
-  weightBtnText: { color: colors.textMuted, fontSize: 15, fontWeight: "700" },
   catalog: { flexDirection: "row", gap: 12 },
   catalogPill: {
     flex: 1,
@@ -303,26 +262,63 @@ const makeStyles = (colors: ThemeColors) =>
   },
   emptyText: { color: colors.textMuted, fontSize: 14 },
 
-  formCard: {
+  choicesCard: {
     backgroundColor: colors.surface,
-    borderRadius: 18,
-    padding: 18,
-    gap: 14,
+    borderRadius: 16,
+    paddingHorizontal: 16,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  cardTitle: { color: colors.text, fontSize: 16, fontWeight: "800" },
-  fieldRow: { flexDirection: "row", gap: 10 },
-  fieldLabel: { color: colors.text, fontSize: 14, fontWeight: "700", marginTop: 4 },
+  choiceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 14,
+    gap: 12,
+  },
+  choiceLabelWrap: { flexDirection: "row", alignItems: "center", gap: 8 },
+  choiceLabel: { color: colors.textMuted, fontSize: 14, fontWeight: "600" },
+  choiceValue: { color: colors.text, fontSize: 15, fontWeight: "700", flexShrink: 1, textAlign: "right" },
+  choiceSep: { height: 1, backgroundColor: colors.border },
 
-  saveBtn: {
+  editBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
     backgroundColor: colors.primary,
     borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: "center",
-    marginTop: 6,
+    paddingVertical: 15,
   },
-  saveBtnDisabled: { opacity: 0.5 },
+  editText: { color: colors.onPrimary, fontSize: 16, fontWeight: "800" },
+
+  infoBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 28,
+  },
+  infoCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 18,
+    padding: 20,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    width: "100%",
+  },
+  infoTitle: { color: colors.text, fontSize: 18, fontWeight: "800" },
+  infoText: { color: colors.textMuted, fontSize: 14, lineHeight: 20 },
+  infoBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+    marginTop: 4,
+  },
+  infoBtnText: { color: colors.onPrimary, fontSize: 15, fontWeight: "800" },
+
   saveText: { color: colors.onPrimary, fontSize: 16, fontWeight: "800" },
   retryBtn: {
     backgroundColor: colors.primary,
@@ -331,5 +327,4 @@ const makeStyles = (colors: ThemeColors) =>
     alignItems: "center",
   },
   errorText: { color: colors.fat, fontSize: 13 },
-  successText: { color: colors.primary, fontSize: 13, fontWeight: "600" },
 });

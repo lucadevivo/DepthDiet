@@ -1,26 +1,34 @@
-import { useState } from "react";
-import { ScrollView, View, Text, Pressable, ActivityIndicator, StyleSheet } from "react-native";
+import { useCallback, useState } from "react";
+import { ScrollView, View, Text, Pressable, Modal, ActivityIndicator, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
-import { useTheme, useThemed, type ThemeMode } from "../../src/theme/ThemeProvider";
+import { useRouter, useFocusEffect } from "expo-router";
+import { useThemed } from "../../src/theme/ThemeProvider";
 import type { ThemeColors } from "../../src/theme/colors";
 import { Icon } from "../../src/components/Icon";
 import { OptionList } from "../../src/components/OptionList";
-import { SegmentedControl } from "../../src/components/SegmentedControl";
 import { NumberField } from "../../src/components/NumberField";
 import { useProfileQuery, useUpdateFormula } from "../../src/hooks/useProfile";
 import { FORMULA_OPTIONS, type Formula } from "../../src/types/profile";
 
-const THEME_OPTIONS: { value: ThemeMode; label: string }[] = [
-  { value: "dark", label: "Dark" },
-  { value: "light", label: "Light" },
-  { value: "system", label: "System" },
-];
+/** Spiegazioni delle formule BMR, mostrate nel popup (toccando la "ⓘ"). */
+const FORMULA_INFO: Record<Formula, { title: string; text: string }> = {
+  mifflin: {
+    title: "Mifflin-St Jeor",
+    text: "The modern default. Estimates your basal metabolism from weight, height, age and sex. It's the most accurate equation for the general population, so it's the recommended choice unless you have a reason to change.",
+  },
+  harris_benedict: {
+    title: "Harris-Benedict (revised)",
+    text: "One of the oldest BMR equations, revised in 1984. Also based on weight, height, age and sex, it tends to estimate a little higher than Mifflin-St Jeor. A solid classic alternative.",
+  },
+  katch_mcardle: {
+    title: "Katch-McArdle",
+    text: "Estimates your metabolism from lean body mass, so it needs your body-fat %. If you know your body fat reasonably well (e.g. from a scan or calipers) it can be the most accurate — especially if you're very lean or very muscular. Without a body-fat figure it can't be used.",
+  },
+};
 
-/** Settings (stile "Macros"): formula BMR, tema dark/light/system, credenziali. */
+/** Settings (stile "Macros"): formula BMR, aspetto (schermata dedicata), credenziali. */
 export default function SettingsScreen() {
   const { colors, styles } = useThemed(makeStyles);
-  const { mode, setMode } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
@@ -29,14 +37,32 @@ export default function SettingsScreen() {
   const p = profile.data;
 
   const [bodyFat, setBodyFat] = useState("");
+  // Formula scelta in modo "ottimistico": permette di selezionare Katch e far
+  // comparire subito il campo body fat anche prima che la mutazione vada a buon fine.
+  const [picked, setPicked] = useState<Formula | null>(null);
+  // Formula di cui mostrare la spiegazione nel popup (null = popup chiuso).
+  const [info, setInfo] = useState<Formula | null>(null);
+
+  const currentFormula: Formula | null = picked ?? p?.formula ?? null;
+
+  // Se si lascia la schermata, scarta la selezione "ottimistica" non confermata:
+  // così un Katch-McArdle scelto ma senza body fat applicato torna alla formula
+  // davvero salvata (quella del profilo) invece di restare selezionato a vuoto.
+  useFocusEffect(
+    useCallback(() => {
+      return () => setPicked(null);
+    }, []),
+  );
 
   // Cambio formula: katch richiede il body fat (mostra il campo + Apply), le altre
   // si applicano subito.
   const onPickFormula = (formula: Formula) => {
+    setPicked(formula);
     if (formula === "katch_mcardle") {
       const seed = p?.body_fat_pct != null ? String(p.body_fat_pct) : bodyFat;
       setBodyFat(seed);
-      if (!seed) return; // serve il body fat: l'utente lo inserisce e preme Apply
+      // Senza body fat non applichiamo: il campo qui sotto compare e l'utente preme Apply.
+      if (!seed) return;
       updateFormula.mutate({ formula, body_fat_pct: Number.parseFloat(seed) });
       return;
     }
@@ -49,10 +75,10 @@ export default function SettingsScreen() {
     updateFormula.mutate({ formula: "katch_mcardle", body_fat_pct: bf });
   };
 
-  const showBodyFat = p?.formula === "katch_mcardle";
+  const showBodyFat = currentFormula === "katch_mcardle";
 
   return (
-    <ScrollView
+    <ScrollView showsVerticalScrollIndicator={false}
       style={styles.screen}
       contentContainerStyle={[styles.content, { paddingTop: insets.top + 8 }]}
       keyboardShouldPersistTaps="handled"
@@ -69,7 +95,12 @@ export default function SettingsScreen() {
         ) : (
           <>
             <Text style={styles.cardTitle}>BMR formula</Text>
-            <OptionList options={FORMULA_OPTIONS} value={p.formula} onChange={onPickFormula} />
+            <OptionList
+              options={FORMULA_OPTIONS}
+              value={currentFormula}
+              onChange={onPickFormula}
+              onInfo={setInfo}
+            />
             {showBodyFat ? (
               <View style={styles.katch}>
                 <NumberField label="Body fat %" value={bodyFat} onChangeText={setBodyFat} unit="%" />
@@ -95,11 +126,14 @@ export default function SettingsScreen() {
         )}
       </View>
 
-      {/* Tema */}
+      {/* Aspetto: tutto in una schermata dedicata (tema, accento, sfondo, box). */}
       <Text style={styles.group}>Appearance</Text>
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Theme</Text>
-        <SegmentedControl options={THEME_OPTIONS} value={mode} onChange={setMode} />
+        <Pressable style={styles.row} onPress={() => router.push("/appearance")}>
+          <Icon name="bulb" size={20} color={colors.primary} />
+          <Text style={styles.rowLabel}>Theme & colors</Text>
+          <Icon name="chevron" size={16} color={colors.textMuted} />
+        </Pressable>
       </View>
 
       {/* Account */}
@@ -111,6 +145,19 @@ export default function SettingsScreen() {
           <Icon name="chevron" size={16} color={colors.textMuted} />
         </Pressable>
       </View>
+
+      {/* Spiegazione della formula toccata (la "ⓘ" nella lista). */}
+      <Modal visible={info != null} transparent animationType="fade" onRequestClose={() => setInfo(null)}>
+        <Pressable style={styles.infoBackdrop} onPress={() => setInfo(null)}>
+          <Pressable style={styles.infoCard} onPress={() => {}}>
+            <Text style={styles.infoTitle}>{info ? FORMULA_INFO[info].title : ""}</Text>
+            <Text style={styles.infoText}>{info ? FORMULA_INFO[info].text : ""}</Text>
+            <Pressable style={styles.infoOkBtn} onPress={() => setInfo(null)}>
+              <Text style={styles.infoOkText}>Got it</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </ScrollView>
   );
 }
@@ -154,4 +201,31 @@ const makeStyles = (colors: ThemeColors) =>
     applyText: { color: colors.onPrimary, fontSize: 15, fontWeight: "800" },
     ok: { color: colors.primary, fontSize: 13, fontWeight: "600" },
     err: { color: colors.fat, fontSize: 13 },
+
+    infoBackdrop: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.5)",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 28,
+    },
+    infoCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 18,
+      padding: 20,
+      gap: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      width: "100%",
+    },
+    infoTitle: { color: colors.text, fontSize: 18, fontWeight: "800" },
+    infoText: { color: colors.textMuted, fontSize: 14, lineHeight: 20 },
+    infoOkBtn: {
+      backgroundColor: colors.primary,
+      borderRadius: 12,
+      paddingVertical: 12,
+      alignItems: "center",
+      marginTop: 4,
+    },
+    infoOkText: { color: colors.onPrimary, fontSize: 15, fontWeight: "800" },
   });
