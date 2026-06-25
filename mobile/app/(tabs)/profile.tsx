@@ -19,14 +19,18 @@ export default function ProfileScreen() {
   const profileQuery = useProfileQuery();
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={[styles.content, { paddingTop: insets.top + 8 }]}
-      keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={false}
-    >
-      <Text style={styles.heading}>Profile</Text>
+    <View style={styles.screen}>
+      {/* Titolo fisso in alto: resta in cima quando si scorre (come il Diary). */}
+      <View style={[styles.titleBar, { paddingTop: insets.top + 8 }]}>
+        <Text style={styles.heading}>Profile</Text>
+      </View>
 
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
       {profileQuery.isLoading ? (
         <View style={styles.center}>
           <ActivityIndicator color={colors.primary} />
@@ -68,7 +72,8 @@ export default function ProfileScreen() {
           </Pressable>
         </>
       )}
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -234,7 +239,8 @@ function ErrorBox({ onRetry }: { onRetry: () => void }) {
 const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: 16, gap: 16, paddingBottom: 48 },
+  titleBar: { paddingHorizontal: 16, paddingBottom: 8, backgroundColor: colors.bg },
+  content: { padding: 16, paddingTop: 8, gap: 16, paddingBottom: 48 },
   heading: { color: colors.text, fontSize: 28, fontWeight: "800" },
   catalog: { flexDirection: "row", gap: 12 },
   catalogPill: {

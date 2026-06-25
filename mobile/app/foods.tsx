@@ -15,8 +15,9 @@ import { SegmentedControl } from "../src/components/SegmentedControl";
 import { Icon, type IconName } from "../src/components/Icon";
 import { useThemed } from "../src/theme/ThemeProvider";
 import type { ThemeColors } from "../src/theme/colors";
-import { useCreateFood, useDeleteFood, useFoodsQuery } from "../src/hooks/useFoods";
-import type { CustomFoodInput } from "../src/types/food";
+import { parseDecimal } from "../src/lib/num";
+import { useCreateFood, useDeleteFood, useFoodsQuery, useUpdateFood } from "../src/hooks/useFoods";
+import type { CustomFood, CustomFoodInput } from "../src/types/food";
 
 type Basis = "per100" | "portion";
 const BASIS_OPTIONS: { value: Basis; label: string }[] = [
@@ -29,12 +30,18 @@ export default function FoodsScreen() {
   const router = useRouter();
   const foods = useFoodsQuery();
   const createFood = useCreateFood();
+  const updateFood = useUpdateFood();
   const deleteFood = useDeleteFood();
 
   const [showManual, setShowManual] = useState(false);
+  // Alimento in modifica (null = creazione di uno nuovo).
+  const [editing, setEditing] = useState<CustomFood | null>(null);
   const [name, setName] = useState("");
   const [brand, setBrand] = useState("");
   const [kcal, setKcal] = useState("");
+  // true quando l'utente ha scritto le calorie a mano: in quel caso non le
+  // ricalcoliamo dai macro. Svuotando il campo si torna al calcolo automatico.
+  const [kcalEdited, setKcalEdited] = useState(false);
   const [p, setP] = useState("");
   const [c, setC] = useState("");
   const [f, setF] = useState("");
@@ -42,15 +49,29 @@ export default function FoodsScreen() {
   const [basis, setBasis] = useState<Basis>("per100");
   const [portionG, setPortionG] = useState("");
 
-  const nk = Number.parseFloat(kcal);
-  const pg = Number.parseFloat(portionG);
+  const macroP = parseDecimal(p) || 0;
+  const macroC = parseDecimal(c) || 0;
+  const macroF = parseDecimal(f) || 0;
+  const anyMacro = p.trim() !== "" || c.trim() !== "" || f.trim() !== "";
+  // Calorie automatiche dai macro (4/4/9 kcal per g). Se l'utente le ha scritte
+  // a mano usiamo le sue, altrimenti quelle calcolate.
+  const autoKcal = Math.round(macroP * 4 + macroC * 4 + macroF * 9);
+  const kcalShown = kcalEdited ? kcal : anyMacro ? String(autoKcal) : "";
+
+  const nk = parseDecimal(kcalShown);
+  const pg = parseDecimal(portionG);
   const portionValid = basis === "per100" || (Number.isFinite(pg) && pg > 0);
-  const valid = name.trim() !== "" && Number.isFinite(nk) && portionValid;
+  const valid = name.trim() !== "" && Number.isFinite(nk) && nk >= 0 && portionValid;
+
+  const pending = createFood.isPending || updateFood.isPending;
+  const isError = createFood.isError || updateFood.isError;
 
   const resetForm = () => {
+    setEditing(null);
     setName("");
     setBrand("");
     setKcal("");
+    setKcalEdited(false);
     setP("");
     setC("");
     setF("");
@@ -59,7 +80,23 @@ export default function FoodsScreen() {
     setShowManual(false);
   };
 
-  const onCreate = () => {
+  // Apre il form pre-compilato per modificare un alimento già creato. I valori
+  // salvati sono sempre per 100 g.
+  const startEdit = (food: CustomFood) => {
+    setEditing(food);
+    setName(food.name);
+    setBrand(food.brand ?? "");
+    setKcal(String(food.kcal_per_100));
+    setKcalEdited(true); // mostra il valore salvato; resta modificabile
+    setP(String(food.protein_per_100));
+    setC(String(food.carbs_per_100));
+    setF(String(food.fat_per_100));
+    setBasis("per100");
+    setPortionG("");
+    setShowManual(true);
+  };
+
+  const onSubmit = () => {
     if (!valid) return;
     // Converte i valori inseriti (per 100 g o per la porzione) in valori per 100 g,
     // che è come il backend memorizza gli alimenti. Se l'utente ha specificato una
@@ -70,12 +107,18 @@ export default function FoodsScreen() {
       name: name.trim(),
       brand: brand.trim() || null,
       kcal_per_100: Math.round(nk * factor * 10) / 10,
-      protein_per_100: Math.round((Number.parseFloat(p) || 0) * factor * 10) / 10,
-      carbs_per_100: Math.round((Number.parseFloat(c) || 0) * factor * 10) / 10,
-      fat_per_100: Math.round((Number.parseFloat(f) || 0) * factor * 10) / 10,
-      default_serving_g: basis === "portion" ? pg : null,
+      protein_per_100: Math.round(macroP * factor * 10) / 10,
+      carbs_per_100: Math.round(macroC * factor * 10) / 10,
+      fat_per_100: Math.round(macroF * factor * 10) / 10,
+      // In modifica (basis per 100 g) preserviamo porzione e barcode esistenti.
+      default_serving_g: basis === "portion" ? pg : (editing?.default_serving_g ?? null),
+      barcode: editing?.barcode ?? undefined,
     };
-    createFood.mutate(input, { onSuccess: resetForm });
+    if (editing) {
+      updateFood.mutate({ id: editing.id, input }, { onSuccess: resetForm });
+    } else {
+      createFood.mutate(input, { onSuccess: resetForm });
+    }
   };
 
   return (
@@ -84,7 +127,7 @@ export default function FoodsScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Text style={styles.lead}>
           Your personal food library. Add the foods you eat so you can log them in seconds and the
-          meal scanner can match them automatically.
+          meal scanner can match them automatically. Tap a food below to edit it.
         </Text>
 
         <Text style={styles.section}>Add a food</Text>
@@ -106,13 +149,13 @@ export default function FoodsScreen() {
           icon="add"
           title="Enter manually"
           subtitle="Type the name and the macros — per 100 g or for a portion you choose."
-          onPress={() => setShowManual((s) => !s)}
+          onPress={() => (showManual ? resetForm() : setShowManual(true))}
           open={showManual}
         />
 
         {showManual ? (
           <View style={styles.formCard}>
-            <Text style={styles.formTitle}>New food</Text>
+            <Text style={styles.formTitle}>{editing ? "Edit food" : "New food"}</Text>
             <TextInput
               style={styles.input}
               placeholder="Name (e.g. Oats)"
@@ -142,7 +185,15 @@ export default function FoodsScreen() {
             ) : null}
 
             <View style={styles.row}>
-              <NumberField label="Kcal" value={kcal} onChangeText={setKcal} />
+              <NumberField
+                label="Kcal"
+                value={kcalShown}
+                onChangeText={(t) => {
+                  setKcal(t);
+                  // Campo svuotato → torna alle calorie calcolate dai macro.
+                  setKcalEdited(t.trim() !== "");
+                }}
+              />
               <NumberField label="Protein" value={p} onChangeText={setP} unit="g" />
             </View>
             <View style={styles.row}>
@@ -150,22 +201,27 @@ export default function FoodsScreen() {
               <NumberField label="Fat" value={f} onChangeText={setF} unit="g" />
             </View>
             <Text style={styles.basisHint}>
+              {kcalEdited
+                ? "Calories set manually. Clear the field to compute them from the macros."
+                : "Calories are computed from the macros (4/4/9). You can override them."}
+            </Text>
+            <Text style={styles.basisHint}>
               {basis === "portion"
                 ? "Enter the macros for one portion of the size above; it's saved as the default portion."
                 : "Enter the macros per 100 g."}
             </Text>
             <Pressable
-              onPress={onCreate}
-              disabled={!valid || createFood.isPending}
-              style={[styles.btn, (!valid || createFood.isPending) && styles.disabled]}
+              onPress={onSubmit}
+              disabled={!valid || pending}
+              style={[styles.btn, (!valid || pending) && styles.disabled]}
             >
-              {createFood.isPending ? (
+              {pending ? (
                 <ActivityIndicator color={colors.onPrimary} />
               ) : (
-                <Text style={styles.btnText}>Save food</Text>
+                <Text style={styles.btnText}>{editing ? "Save changes" : "Save food"}</Text>
               )}
             </Pressable>
-            {createFood.isError ? <Text style={styles.error}>Could not save.</Text> : null}
+            {isError ? <Text style={styles.error}>Could not save.</Text> : null}
           </View>
         ) : null}
 
@@ -177,23 +233,27 @@ export default function FoodsScreen() {
         ) : (foods.data ?? []).length === 0 ? (
           <Text style={styles.empty}>No foods yet. Add your first one above.</Text>
         ) : (
-          (foods.data ?? []).map((food) => (
-            <View key={food.id} style={styles.foodRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.foodName}>
-                  {food.name}
-                  {food.brand ? <Text style={styles.foodBrand}> · {food.brand}</Text> : null}
-                </Text>
-                <Text style={styles.foodMeta}>
-                  {food.kcal_per_100} kcal · P {food.protein_per_100} C {food.carbs_per_100} G{" "}
-                  {food.fat_per_100} /100g
-                </Text>
+          (foods.data ?? []).map((food) => {
+            const active = editing?.id === food.id;
+            return (
+              <View key={food.id} style={[styles.foodRow, active && styles.foodRowActive]}>
+                {/* Tocca un alimento per modificarlo; la "×" lo elimina. */}
+                <Pressable style={{ flex: 1 }} onPress={() => startEdit(food)}>
+                  <Text style={styles.foodName}>
+                    {food.name}
+                    {food.brand ? <Text style={styles.foodBrand}> · {food.brand}</Text> : null}
+                  </Text>
+                  <Text style={styles.foodMeta}>
+                    {food.kcal_per_100} kcal · P {food.protein_per_100} C {food.carbs_per_100} G{" "}
+                    {food.fat_per_100} /100g
+                  </Text>
+                </Pressable>
+                <Pressable onPress={() => deleteFood.mutate(food.id)} hitSlop={10} style={styles.delBtn}>
+                  <Icon name="close" size={18} color={colors.textMuted} />
+                </Pressable>
               </View>
-              <Pressable onPress={() => deleteFood.mutate(food.id)} hitSlop={10} style={styles.delBtn}>
-                <Icon name="close" size={18} color={colors.textMuted} />
-              </Pressable>
-            </View>
-          ))
+            );
+          })
         )}
       </ScrollView>
     </View>
@@ -300,6 +360,7 @@ const makeStyles = (colors: ThemeColors) =>
       borderWidth: 1,
       borderColor: colors.border,
     },
+    foodRowActive: { borderColor: colors.primary },
     foodName: { color: colors.text, fontSize: 15, fontWeight: "700" },
     foodBrand: { color: colors.textMuted, fontWeight: "500" },
     foodMeta: { color: colors.textMuted, fontSize: 12, marginTop: 2 },

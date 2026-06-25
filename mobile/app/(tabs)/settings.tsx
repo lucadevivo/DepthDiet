@@ -78,13 +78,17 @@ export default function SettingsScreen() {
   const showBodyFat = currentFormula === "katch_mcardle";
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false}
-      style={styles.screen}
-      contentContainerStyle={[styles.content, { paddingTop: insets.top + 8 }]}
-      keyboardShouldPersistTaps="handled"
-    >
-      <Text style={styles.heading}>Settings</Text>
+    <View style={styles.screen}>
+      {/* Titolo fisso in alto: resta in cima quando si scorre (come il Diary). */}
+      <View style={[styles.titleBar, { paddingTop: insets.top + 8 }]}>
+        <Text style={styles.heading}>Settings</Text>
+      </View>
 
+      <ScrollView showsVerticalScrollIndicator={false}
+        style={styles.screen}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
       {/* Formula BMR */}
       <Text style={styles.group}>Calculation</Text>
       <View style={styles.card}>
@@ -158,14 +162,16 @@ export default function SettingsScreen() {
           </Pressable>
         </Pressable>
       </Modal>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: colors.bg },
-    content: { padding: 16, gap: 8, paddingBottom: 40 },
+    titleBar: { paddingHorizontal: 16, paddingBottom: 8, backgroundColor: colors.bg },
+    content: { padding: 16, paddingTop: 4, gap: 8, paddingBottom: 40 },
     heading: { color: colors.text, fontSize: 28, fontWeight: "800", marginBottom: 8 },
     group: {
       color: colors.textMuted,

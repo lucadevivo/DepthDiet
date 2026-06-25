@@ -9,6 +9,7 @@ import { MetricCard } from "../../src/components/MetricCard";
 import { NumberField } from "../../src/components/NumberField";
 import { SegmentedControl } from "../../src/components/SegmentedControl";
 import { Icon } from "../../src/components/Icon";
+import { parseDecimal } from "../../src/lib/num";
 import {
   DIET_PRESET_OPTIONS,
   type DietPreset,
@@ -17,7 +18,7 @@ import {
 
 /** Etichetta breve "C 50 · P 20 · F 30" per un preset. */
 function pctLabel(pct: MacroPercentages): string {
-  return `C ${pct.carbs_pct} · P ${pct.protein_pct} · F ${pct.fat_pct}`;
+  return `C ${Math.round(pct.carbs_pct)} · P ${Math.round(pct.protein_pct)} · F ${Math.round(pct.fat_pct)}`;
 }
 
 /**
@@ -45,13 +46,17 @@ export default function GoalsScreen() {
   const noTargets = !p || p.target_calories == null;
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false}
-      style={styles.screen}
-      contentContainerStyle={[styles.content, { paddingTop: insets.top + 8 }]}
-      keyboardShouldPersistTaps="handled"
-    >
-      <Text style={styles.heading}>Goals</Text>
+    <View style={styles.screen}>
+      {/* Titolo fisso in alto: resta in cima quando si scorre (come il Diary). */}
+      <View style={[styles.titleBar, { paddingTop: insets.top + 8 }]}>
+        <Text style={styles.heading}>Goals</Text>
+      </View>
 
+      <ScrollView showsVerticalScrollIndicator={false}
+        style={styles.screen}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
       {profile.isLoading ? (
         <ActivityIndicator color={colors.primary} style={{ marginTop: 24 }} />
       ) : noTargets ? (
@@ -167,7 +172,8 @@ export default function GoalsScreen() {
           </Modal>
         </>
       )}
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -215,8 +221,8 @@ function CustomEditor({
   // --- g per kg (proteine + grassi; i carbo riempiono) ---
   const [proteinPerKg, setProteinPerKg] = useState("");
   const [fatPerKg, setFatPerKg] = useState("");
-  const ppk = Number.parseFloat(proteinPerKg);
-  const fpk = Number.parseFloat(fatPerKg);
+  const ppk = parseDecimal(proteinPerKg);
+  const fpk = parseDecimal(fatPerKg);
   const gkgInputsOk = Number.isFinite(ppk) && ppk > 0 && Number.isFinite(fpk) && fpk > 0 && weightKg > 0;
   const proteinG = gkgInputsOk ? ppk * weightKg : 0;
   const fatG = gkgInputsOk ? fpk * weightKg : 0;
@@ -228,10 +234,12 @@ function CustomEditor({
 
   const applyGkg = () => {
     if (!gkgValid) return;
-    // Percentuali precise sulle calorie obiettivo: riproducono i grammi esatti di
-    // proteine/grassi; i carboidrati prendono il resto.
-    const protein_pct = (proteinG * 4) / targetCalories * 100;
-    const fat_pct = (fatG * 9) / targetCalories * 100;
+    // Percentuali (intere) sulle calorie obiettivo che riproducono i grammi di
+    // proteine/grassi; i carboidrati prendono il resto. Arrotondiamo a numeri interi
+    // così non restano decimali infiniti, e ricaviamo i carbo per differenza così la
+    // somma resta esattamente 100.
+    const protein_pct = Math.round((proteinG * 4) / targetCalories * 100);
+    const fat_pct = Math.round((fatG * 9) / targetCalories * 100);
     const carbs_pct = 100 - protein_pct - fat_pct;
     onApply({ carbs_pct, protein_pct, fat_pct });
   };
@@ -317,7 +325,8 @@ function CustomEditor({
 const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: 16, gap: 16, paddingBottom: 40 },
+  titleBar: { paddingHorizontal: 16, paddingBottom: 8, backgroundColor: colors.bg },
+  content: { padding: 16, paddingTop: 8, gap: 16, paddingBottom: 40 },
   heading: { color: colors.text, fontSize: 28, fontWeight: "800" },
 
   infoBackdrop: {

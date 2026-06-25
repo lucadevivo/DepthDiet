@@ -14,7 +14,7 @@
     "android": {
       "package": "app.webluca.foodtracker",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0B0B0D",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -27,6 +27,15 @@
     "plugins": [
       "expo-secure-store",
       "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0B0B0D",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain"
+        }
+      ],
       [
         "expo-camera",
         {
