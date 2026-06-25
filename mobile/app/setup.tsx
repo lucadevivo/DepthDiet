@@ -12,6 +12,7 @@ import { ScreenHeader } from "../src/components/ScreenHeader";
 import { useTheme, useThemed } from "../src/theme/ThemeProvider";
 import type { ThemeColors } from "../src/theme/colors";
 import { apiFetch } from "../src/api/client";
+import { queryClient } from "../src/api/queryClient";
 import { SECRET_KEYS, getSecret, setSecret, deleteSecret } from "../src/lib/secureStore";
 
 type TestState = "idle" | "testing" | "ok" | "fail";
@@ -57,6 +58,11 @@ export default function SetupScreen() {
       const sec = cfSecret.trim();
       if (sec) await setSecret(SECRET_KEYS.cfAccessClientSecret, sec);
       else await deleteSecret(SECRET_KEYS.cfAccessClientSecret);
+
+      // Le credenziali sono cambiate: rilancia le query che potrebbero essere in
+      // errore (es. il Diary aperto all'avvio prima che il token fosse impostato),
+      // così l'app si riprende senza dover riavviare.
+      await queryClient.invalidateQueries();
 
       setSaved(true);
     } finally {
