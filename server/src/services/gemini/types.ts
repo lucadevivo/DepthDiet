@@ -48,6 +48,8 @@ export interface AnalyzeInput {
   imageBase64: string;
   /** MIME dell'immagine, es. "image/jpeg". */
   mimeType: string;
+  /** Viste aggiuntive dello STESSO pasto (altre angolazioni) per aiutare la stima. */
+  extraImages?: { imageBase64: string; mimeType: string }[];
   /** Contesto testuale opzionale (es. "ci sono 30g di parmigiano sotto"). */
   contextText?: string;
   /** Ipotesi volumetrica opzionale dal LiDAR (Fase 4b). Trattata come stima approssimativa. */

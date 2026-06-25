@@ -145,13 +145,18 @@ export async function analyzeMeal(input: AnalyzeInput): Promise<AnalyzeResult> {
   const prompt = buildMealPrompt(input, matched);
 
   // 3. Chiamata con structured output nativo (con retry su errori transitori).
+  // Prompt + immagine principale + eventuali viste aggiuntive dello stesso pasto.
+  const contents = [
+    { text: prompt },
+    { inlineData: { mimeType: input.mimeType, data: input.imageBase64 } },
+    ...(input.extraImages ?? []).map((img) => ({
+      inlineData: { mimeType: img.mimeType, data: img.imageBase64 },
+    })),
+  ];
   const response = await withRetry(() =>
     ai.models.generateContent({
       model: env.gemini.model,
-      contents: [
-        { text: prompt },
-        { inlineData: { mimeType: input.mimeType, data: input.imageBase64 } },
-      ],
+      contents,
       config: {
         responseMimeType: "application/json",
         responseSchema: mealAnalysisSchema,

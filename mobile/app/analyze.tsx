@@ -141,10 +141,15 @@ export default function AnalyzeScreen() {
 
   const [contextText, setContextText] = useState("");
   const [captured, setCaptured] = useState<Captured | null>(null);
+  // Viste aggiuntive dello stesso pasto (altre angolazioni) inviate a Gemini.
+  const [extraImages, setExtraImages] = useState<Captured[]>([]);
+  // Lo scatto interno serve la foto principale o una vista extra?
+  const [cameraMode, setCameraMode] = useState<"primary" | "extra">("primary");
   // Stima volumetrica dal LiDAR (Fase 4b), allegata all'analisi quando presente.
   const [depth, setDepth] = useState<{ volumeMl: number; quality: DepthQuality } | null>(null);
   // Il device ha il LiDAR e il modulo nativo è incluso nel build? (calcolato una volta)
   const lidarAvailable = useMemo(() => isLidarSupported(), []);
+  const MAX_EXTRA = 3;
   const [items, setItems] = useState<EditItem[]>([]);
   const [notes, setNotes] = useState<string | undefined>();
   const [error, setError] = useState<string | null>(null);
@@ -176,6 +181,7 @@ export default function AnalyzeScreen() {
 
   const openCamera = async () => {
     setError(null);
+    setCameraMode("primary");
     // Se il device ha il LiDAR, usiamo in automatico la cattura AR nativa (foto +
     // volume in una mira sola): l'utente non sceglie nulla, come per il reference
     // object. Lo schermo nativo gestisce da sé i permessi fotocamera.
@@ -193,14 +199,55 @@ export default function AnalyzeScreen() {
     setPhase("camera");
   };
 
+  // --- Viste aggiuntive (altre angolazioni dello stesso pasto) ---
+
+  // Foto extra dalla fotocamera: sempre la camera normale (la depth serve solo
+  // alla principale), così è veloce aggiungere più scatti.
+  const addExtraFromCamera = async () => {
+    if (extraImages.length >= MAX_EXTRA) return;
+    setError(null);
+    setCameraMode("extra");
+    if (!permission?.granted) {
+      const res = await requestPermission();
+      if (!res.granted) {
+        setError("Camera permission needed. Enable it in Settings.");
+        return;
+      }
+    }
+    setPhase("camera");
+  };
+
+  const addExtraFromGallery = async () => {
+    if (extraImages.length >= MAX_EXTRA) return;
+    setError(null);
+    try {
+      const img = await pickAndPrepareMealImage("library");
+      setExtraImages((prev) => [
+        ...prev,
+        { previewUri: `data:${img.mimeType};base64,${img.base64}`, base64: img.base64, mimeType: img.mimeType },
+      ]);
+    } catch (e) {
+      if (e instanceof ImagePickCancelled) return;
+      setError("Couldn't load the image. Try again.");
+    }
+  };
+
+  const removeExtra = (idx: number) =>
+    setExtraImages((prev) => prev.filter((_, i) => i !== idx));
+
   const takePhoto = async () => {
     if (!cameraRef.current || capturing) return;
     setCapturing(true);
     try {
       const photo = await cameraRef.current.takePictureAsync({ quality: 1 });
       const prepared = await prepareMealImage(photo.uri, photo.width, photo.height);
-      setDepth(null); // foto normale: nessun volume
-      setCaptured({ previewUri: photo.uri, base64: prepared.base64, mimeType: prepared.mimeType });
+      const shot = { previewUri: photo.uri, base64: prepared.base64, mimeType: prepared.mimeType };
+      if (cameraMode === "extra") {
+        setExtraImages((prev) => [...prev, shot]);
+      } else {
+        setDepth(null); // foto normale: nessun volume
+        setCaptured(shot);
+      }
       setPhase("captured");
     } catch {
       setError("Couldn't take the photo. Try again.");
@@ -261,6 +308,10 @@ export default function AnalyzeScreen() {
         mimeType: captured.mimeType,
         contextText: contextText.trim() || undefined,
         depth: depth ?? undefined,
+        extraImages:
+          extraImages.length > 0
+            ? extraImages.map((e) => ({ imageBase64: e.base64, mimeType: e.mimeType }))
+            : undefined,
       };
       const result = await analyze.mutateAsync(body);
       if (result.items.length === 0) {
@@ -345,10 +396,16 @@ export default function AnalyzeScreen() {
 
         {/* Barra superiore: solo chiudi e titolo (interfaccia minimale). */}
         <View style={[styles.cameraTop, { paddingTop: insets.top + 8 }]}>
-          <Pressable onPress={() => setPhase("pick")} hitSlop={12} style={styles.cameraClose}>
+          <Pressable
+            onPress={() => setPhase(cameraMode === "extra" ? "captured" : "pick")}
+            hitSlop={12}
+            style={styles.cameraClose}
+          >
             <Icon name="close" size={26} color="#fff" />
           </Pressable>
-          <Text style={styles.cameraTitle}>{mealName}</Text>
+          <Text style={styles.cameraTitle}>
+            {cameraMode === "extra" ? "Add a view" : mealName}
+          </Text>
           <View style={{ width: 26 }} />
         </View>
 
@@ -415,6 +472,37 @@ export default function AnalyzeScreen() {
               <Text style={styles.depthText}>
                 Volume measured with LiDAR: ~{Math.round(depth.volumeMl)} ml ({depth.quality})
               </Text>
+            </View>
+          ) : null}
+
+          {/* Viste aggiuntive: altre angolazioni dello STESSO pasto, per dare più
+              contesto a Gemini. Non vengono conteggiate doppie (lo dice il prompt). */}
+          <Text style={styles.label}>More views (optional)</Text>
+          <Text style={styles.hintSmall}>
+            Add other angles of the same meal to help the AI. They won't be double-counted.
+          </Text>
+          {extraImages.length > 0 ? (
+            <View style={styles.thumbRow}>
+              {extraImages.map((img, i) => (
+                <View key={i} style={styles.thumbWrap}>
+                  <Image source={{ uri: img.previewUri }} style={styles.thumb} resizeMode="cover" />
+                  <Pressable style={styles.thumbRemove} onPress={() => removeExtra(i)} hitSlop={8}>
+                    <Icon name="close" size={13} color="#fff" />
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          ) : null}
+          {extraImages.length < MAX_EXTRA ? (
+            <View style={styles.addRow}>
+              <Pressable style={styles.addBtn} onPress={addExtraFromCamera}>
+                <Icon name="camera" size={16} color={colors.text} />
+                <Text style={styles.addBtnText}>Camera</Text>
+              </Pressable>
+              <Pressable style={styles.addBtn} onPress={addExtraFromGallery}>
+                <Icon name="gallery" size={16} color={colors.text} />
+                <Text style={styles.addBtnText}>Gallery</Text>
+              </Pressable>
             </View>
           ) : null}
 
@@ -667,6 +755,41 @@ const makeStyles = (colors: ThemeColors) =>
       paddingVertical: 10,
     },
     depthText: { color: colors.text, fontSize: 13, fontWeight: "600", flex: 1 },
+    thumbRow: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+    thumbWrap: { width: 72, height: 72 },
+    thumb: {
+      width: 72,
+      height: 72,
+      borderRadius: 12,
+      backgroundColor: colors.surfaceAlt,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    thumbRemove: {
+      position: "absolute",
+      top: -6,
+      right: -6,
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      backgroundColor: "rgba(0,0,0,0.75)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    addRow: { flexDirection: "row", gap: 10 },
+    addBtn: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      backgroundColor: colors.surfaceAlt,
+      borderRadius: 12,
+      paddingVertical: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    addBtnText: { color: colors.text, fontSize: 14, fontWeight: "700" },
 
     // Fotocamera interna
     cameraScreen: { flex: 1, backgroundColor: "#000" },

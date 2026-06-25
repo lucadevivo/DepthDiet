@@ -67,6 +67,24 @@ function parseAnalyzeBody(body: unknown): AnalyzeInput | { error: string } {
     return { error: "mimeType immagine richiesto (es. image/jpeg)" };
   }
   const input: AnalyzeInput = { imageBase64: b.imageBase64, mimeType: b.mimeType };
+  // Viste aggiuntive dello stesso pasto (max 4): scarta voci malformate.
+  if (Array.isArray(b.extraImages)) {
+    const extras: { imageBase64: string; mimeType: string }[] = [];
+    for (const raw of b.extraImages) {
+      if (typeof raw !== "object" || raw === null) continue;
+      const e = raw as Record<string, unknown>;
+      if (
+        typeof e.imageBase64 === "string" &&
+        e.imageBase64.length > 0 &&
+        typeof e.mimeType === "string" &&
+        e.mimeType.startsWith("image/")
+      ) {
+        extras.push({ imageBase64: e.imageBase64, mimeType: e.mimeType });
+      }
+      if (extras.length >= 4) break;
+    }
+    if (extras.length > 0) input.extraImages = extras;
+  }
   if (typeof b.contextText === "string") input.contextText = b.contextText;
   if (typeof b.depth === "object" && b.depth !== null) {
     const d = b.depth as Record<string, unknown>;

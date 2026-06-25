@@ -174,7 +174,7 @@ const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
 
-  titleBar: { paddingHorizontal: 16, paddingBottom: 4, backgroundColor: colors.bg },
+  titleBar: { paddingHorizontal: 16, paddingBottom: 8, backgroundColor: colors.bg },
   heading: { color: colors.text, fontSize: 28, fontWeight: "800" },
 
   header: {

@@ -45,6 +45,8 @@ export type ReferenceType = "card_iso" | "coin_1eur" | "coin_2eur";
 export interface AnalyzeBody {
   imageBase64: string;
   mimeType: string;
+  /** Viste aggiuntive dello stesso pasto (altre angolazioni) per Gemini. */
+  extraImages?: { imageBase64: string; mimeType: string }[];
   contextText?: string;
   /** Ipotesi volumetrica dal LiDAR (Fase 4b). */
   depth?: { volumeMl?: number; quality?: DepthQuality };

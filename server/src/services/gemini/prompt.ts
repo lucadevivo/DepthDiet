@@ -34,6 +34,16 @@ export function buildMealPrompt(input: AnalyzeInput, matched: CustomFood[]): str
     "- 'confidence' è la tua sicurezza 0..1 sulla stima di quell'alimento.",
   );
 
+  if (input.extraImages && input.extraImages.length > 0) {
+    const n = input.extraImages.length + 1;
+    lines.push(
+      "",
+      `Ti vengono fornite ${n} immagini: sono ANGOLAZIONI/VISTE DIVERSE DELLO STESSO pasto,`,
+      "non pasti diversi. Usale insieme per riconoscere meglio gli alimenti e stimare le",
+      "porzioni, ma NON sommare le quantità tra le foto: conta ogni alimento UNA volta sola.",
+    );
+  }
+
   if (input.contextText && input.contextText.trim() !== "") {
     lines.push("", `Contesto fornito dall'utente: "${input.contextText.trim()}"`);
   }
