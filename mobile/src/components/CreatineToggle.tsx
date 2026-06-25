@@ -26,7 +26,8 @@ export function CreatineToggle({ date }: Props) {
       onPress={() => setCreatine.mutate(!taken)}
     >
       <View style={styles.titleRow}>
-        <Icon name="creatine" size={18} color={colors.protein} />
+        {/* Crema fissa: richiama la polvere di creatina, indipendente dall'accento. */}
+        <Icon name="creatine" size={18} color="#F0E8D4" />
         <Text style={styles.title}>Creatine taken today</Text>
       </View>
       <View style={[styles.check, taken && styles.checkOn]}>
@@ -60,5 +61,5 @@ const makeStyles = (colors: ThemeColors) =>
       alignItems: "center",
       justifyContent: "center",
     },
-    checkOn: { backgroundColor: colors.protein, borderColor: colors.protein },
+    checkOn: { backgroundColor: colors.primary, borderColor: colors.primary },
   });
