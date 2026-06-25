@@ -234,12 +234,12 @@ function CustomEditor({
 
   const applyGkg = () => {
     if (!gkgValid) return;
-    // Percentuali (intere) sulle calorie obiettivo che riproducono i grammi di
-    // proteine/grassi; i carboidrati prendono il resto. Arrotondiamo a numeri interi
-    // così non restano decimali infiniti, e ricaviamo i carbo per differenza così la
-    // somma resta esattamente 100.
-    const protein_pct = Math.round((proteinG * 4) / targetCalories * 100);
-    const fat_pct = Math.round((fatG * 9) / targetCalories * 100);
+    // Percentuali PRECISE (non arrotondate) sulle calorie obiettivo: solo così il
+    // backend, ricalcolando i grammi da queste %, riproduce esattamente i g/kg
+    // inseriti (es. 131 g proteine, non 133). I decimali non si vedono comunque:
+    // l'etichetta del preset li arrotonda in `pctLabel`.
+    const protein_pct = (proteinG * 4) / targetCalories * 100;
+    const fat_pct = (fatG * 9) / targetCalories * 100;
     const carbs_pct = 100 - protein_pct - fat_pct;
     onApply({ carbs_pct, protein_pct, fat_pct });
   };
