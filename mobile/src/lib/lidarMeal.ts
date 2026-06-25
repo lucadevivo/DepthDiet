@@ -48,5 +48,12 @@ export function isLidarSupported(): boolean {
 /** Apre lo schermo AR nativo e risolve con foto + volume. */
 export async function captureMealWithLidar(): Promise<LidarCapture> {
   if (!native) throw new Error("modulo LiDAR non disponibile in questo build");
-  return native.captureMeal();
+  try {
+    return await native.captureMeal();
+  } catch (e) {
+    // Il modulo nativo rifiuta con codice "CANCELLED" quando l'utente annulla:
+    // lo normalizziamo in LidarCancelled così il chiamante lo distingue da un errore.
+    if ((e as { code?: string })?.code === "CANCELLED") throw new LidarCancelled();
+    throw e;
+  }
 }

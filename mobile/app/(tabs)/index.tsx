@@ -58,22 +58,9 @@ export default function DiaryScreen() {
 
   return (
     <View style={styles.screen}>
-      {/* Titolo schermata in alto a sinistra, come le altre schede. */}
+      {/* Titolo schermata fisso in alto a sinistra, come le altre schede. */}
       <View style={[styles.titleBar, { paddingTop: insets.top + 8 }]}>
         <Text style={styles.heading}>Diary</Text>
-      </View>
-
-      {/* Selettore del giorno */}
-      <View style={styles.header}>
-        <Pressable onPress={() => setDate(shiftISO(date, -1))} hitSlop={12} style={styles.navBtn}>
-          <Icon name="back" size={26} color={colors.textMuted} />
-        </Pressable>
-        <Pressable onPress={() => setDate(todayISO())} hitSlop={8}>
-          <Text style={styles.dayLabel}>{formatDayLabel(date)}</Text>
-        </Pressable>
-        <Pressable onPress={() => setDate(shiftISO(date, 1))} hitSlop={12} style={styles.navBtn}>
-          <Icon name="forward" size={26} color={colors.textMuted} />
-        </Pressable>
       </View>
 
       <ScrollView
@@ -81,6 +68,19 @@ export default function DiaryScreen() {
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 32 }]}
         showsVerticalScrollIndicator={false}
       >
+        {/* Selettore del giorno: scorre col resto (solo il titolo resta fisso). */}
+        <View style={styles.header}>
+          <Pressable onPress={() => setDate(shiftISO(date, -1))} hitSlop={12} style={styles.navBtn}>
+            <Icon name="back" size={26} color={colors.textMuted} />
+          </Pressable>
+          <Pressable onPress={() => setDate(todayISO())} hitSlop={8}>
+            <Text style={styles.dayLabel}>{formatDayLabel(date)}</Text>
+          </Pressable>
+          <Pressable onPress={() => setDate(shiftISO(date, 1))} hitSlop={12} style={styles.navBtn}>
+            <Icon name="forward" size={26} color={colors.textMuted} />
+          </Pressable>
+        </View>
+
         {diary.isError ? (
           <Text style={styles.error}>Backend unreachable: check URL and credentials.</Text>
         ) : null}
@@ -182,9 +182,7 @@ const makeStyles = (colors: ThemeColors) =>
     alignItems: "center",
     justifyContent: "center",
     gap: 28,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    backgroundColor: colors.bg,
+    paddingVertical: 4,
   },
   navBtn: { width: 32, alignItems: "center" },
   dayLabel: { color: colors.text, fontSize: 20, fontWeight: "800", minWidth: 120, textAlign: "center" },

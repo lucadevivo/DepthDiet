@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ScrollView,
   View,
@@ -30,7 +30,8 @@ import {
   ImagePickCancelled,
 } from "../src/lib/mealImage";
 import { useMealsQuery } from "../src/hooks/useMeals";
-import type { AnalyzeBody, AnalyzeResult, MealItem } from "../src/types/analyze";
+import { isLidarSupported, captureMealWithLidar, LidarCancelled } from "../src/lib/lidarMeal";
+import type { AnalyzeBody, AnalyzeResult, DepthQuality, MealItem } from "../src/types/analyze";
 import type { AddDiaryBody } from "../src/types/diary";
 
 type Phase = "pick" | "camera" | "captured" | "review";
@@ -140,6 +141,10 @@ export default function AnalyzeScreen() {
 
   const [contextText, setContextText] = useState("");
   const [captured, setCaptured] = useState<Captured | null>(null);
+  // Stima volumetrica dal LiDAR (Fase 4b), allegata all'analisi quando presente.
+  const [depth, setDepth] = useState<{ volumeMl: number; quality: DepthQuality } | null>(null);
+  // Il device ha il LiDAR e il modulo nativo è incluso nel build? (calcolato una volta)
+  const lidarAvailable = useMemo(() => isLidarSupported(), []);
   const [items, setItems] = useState<EditItem[]>([]);
   const [notes, setNotes] = useState<string | undefined>();
   const [error, setError] = useState<string | null>(null);
@@ -171,6 +176,13 @@ export default function AnalyzeScreen() {
 
   const openCamera = async () => {
     setError(null);
+    // Se il device ha il LiDAR, usiamo in automatico la cattura AR nativa (foto +
+    // volume in una mira sola): l'utente non sceglie nulla, come per il reference
+    // object. Lo schermo nativo gestisce da sé i permessi fotocamera.
+    if (lidarAvailable) {
+      await captureWithLidar();
+      return;
+    }
     if (!permission?.granted) {
       const res = await requestPermission();
       if (!res.granted) {
@@ -187,6 +199,7 @@ export default function AnalyzeScreen() {
     try {
       const photo = await cameraRef.current.takePictureAsync({ quality: 1 });
       const prepared = await prepareMealImage(photo.uri, photo.width, photo.height);
+      setDepth(null); // foto normale: nessun volume
       setCaptured({ previewUri: photo.uri, base64: prepared.base64, mimeType: prepared.mimeType });
       setPhase("captured");
     } catch {
@@ -196,10 +209,31 @@ export default function AnalyzeScreen() {
     }
   };
 
+  // Cattura LiDAR (Fase 4b): una mira → foto RGB + stima del volume del cibo, già
+  // allineate. Il volume diventa un indizio per l'IA (migliora la stima delle porzioni).
+  const captureWithLidar = async () => {
+    setError(null);
+    try {
+      const res = await captureMealWithLidar();
+      setCaptured({
+        previewUri: `data:${res.mimeType};base64,${res.imageBase64}`,
+        base64: res.imageBase64,
+        mimeType: res.mimeType,
+      });
+      // Allego il volume solo se la misura è utile (quality "none" = scartata).
+      setDepth(res.volumeMl > 0 && res.quality !== "none" ? { volumeMl: res.volumeMl, quality: res.quality } : null);
+      setPhase("captured");
+    } catch (e) {
+      if (e instanceof LidarCancelled) return; // annullato dall'utente: nessun errore
+      setError("LiDAR capture failed. Use the normal camera instead.");
+    }
+  };
+
   const pickFromGallery = async () => {
     setError(null);
     try {
       const img = await pickAndPrepareMealImage("library");
+      setDepth(null); // immagine da galleria: nessun volume
       setCaptured({
         previewUri: `data:${img.mimeType};base64,${img.base64}`,
         base64: img.base64,
@@ -226,6 +260,7 @@ export default function AnalyzeScreen() {
         imageBase64: captured.base64,
         mimeType: captured.mimeType,
         contextText: contextText.trim() || undefined,
+        depth: depth ?? undefined,
       };
       const result = await analyze.mutateAsync(body);
       if (result.items.length === 0) {
@@ -374,6 +409,15 @@ export default function AnalyzeScreen() {
             <Image source={{ uri: captured.previewUri }} style={styles.preview} resizeMode="cover" />
           ) : null}
 
+          {depth ? (
+            <View style={styles.depthBadge}>
+              <Icon name="ruler" size={16} color={colors.primary} />
+              <Text style={styles.depthText}>
+                Volume measured with LiDAR: ~{Math.round(depth.volumeMl)} ml ({depth.quality})
+              </Text>
+            </View>
+          ) : null}
+
           <Text style={styles.label}>Prompt (optional)</Text>
           <TextInput
             style={styles.input}
@@ -398,7 +442,7 @@ export default function AnalyzeScreen() {
                 <Icon name="scan" size={20} color={colors.onPrimary} />
                 <Text style={styles.primaryText}>Analyze</Text>
               </Pressable>
-              <Pressable style={styles.secondaryBtn} onPress={() => setPhase("camera")}>
+              <Pressable style={styles.secondaryBtn} onPress={openCamera}>
                 <Icon name="camera" size={18} color={colors.text} />
                 <Text style={styles.secondaryText}>Retake photo</Text>
               </Pressable>
@@ -420,6 +464,9 @@ export default function AnalyzeScreen() {
           <Text style={styles.lead}>
             Photograph the plate: the AI estimates the foods and matches them to your Foods. You can
             add a prompt before sending.
+            {lidarAvailable
+              ? " On this device the food volume is also measured automatically with LiDAR for a better portion estimate."
+              : ""}
           </Text>
 
           <Text style={styles.label}>Meal: {mealName}</Text>
@@ -610,6 +657,16 @@ const makeStyles = (colors: ThemeColors) =>
     secondaryText: { color: colors.text, fontSize: 15, fontWeight: "700" },
     disabled: { opacity: 0.5 },
     hintSmall: { color: colors.textMuted, fontSize: 12, lineHeight: 16, marginTop: -2 },
+    depthBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      backgroundColor: colors.primary + "1A",
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    depthText: { color: colors.text, fontSize: 13, fontWeight: "600", flex: 1 },
 
     // Fotocamera interna
     cameraScreen: { flex: 1, backgroundColor: "#000" },
