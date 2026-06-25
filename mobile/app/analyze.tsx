@@ -214,7 +214,7 @@ export default function AnalyzeScreen() {
   const captureWithLidar = async () => {
     setError(null);
     try {
-      const res = await captureMealWithLidar();
+      const res = await captureMealWithLidar(mealName);
       setCaptured({
         previewUri: `data:${res.mimeType};base64,${res.imageBase64}`,
         base64: res.imageBase64,

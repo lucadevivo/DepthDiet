@@ -19,7 +19,7 @@ export interface LidarCapture {
 
 interface LidarMealModule {
   isSupported(): boolean;
-  captureMeal(): Promise<LidarCapture>;
+  captureMeal(title?: string): Promise<LidarCapture>;
 }
 
 /**
@@ -45,11 +45,11 @@ export function isLidarSupported(): boolean {
   }
 }
 
-/** Apre lo schermo AR nativo e risolve con foto + volume. */
-export async function captureMealWithLidar(): Promise<LidarCapture> {
+/** Apre lo schermo AR nativo (con il nome del pasto in alto) e risolve con foto + volume. */
+export async function captureMealWithLidar(title?: string): Promise<LidarCapture> {
   if (!native) throw new Error("modulo LiDAR non disponibile in questo build");
   try {
-    return await native.captureMeal();
+    return await native.captureMeal(title);
   } catch (e) {
     // Il modulo nativo rifiuta con codice "CANCELLED" quando l'utente annulla:
     // lo normalizziamo in LidarCancelled così il chiamante lo distingue da un errore.

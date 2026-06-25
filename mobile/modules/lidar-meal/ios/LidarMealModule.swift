@@ -16,7 +16,8 @@ public class LidarMealModule: Module {
     }
 
     // Presenta lo schermo AR a inquadratura singola e risolve con foto + volume.
-    AsyncFunction("captureMeal") { (promise: Promise) in
+    // `title` (opz.) è il nome del pasto, mostrato nella top bar come in expo-camera.
+    AsyncFunction("captureMeal") { (title: String?, promise: Promise) in
       DispatchQueue.main.async {
         guard ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth) else {
           promise.reject("UNSUPPORTED", "Questo dispositivo non ha il sensore LiDAR")
@@ -28,6 +29,7 @@ public class LidarMealModule: Module {
         }
         var settled = false
         let vc = LidarCaptureViewController()
+        vc.mealTitle = title
         vc.onResult = { result in
           if settled { return }
           settled = true
@@ -68,12 +70,14 @@ struct MealMeasurement {
 
 final class LidarCaptureViewController: UIViewController, ARSessionDelegate {
   var onResult: ((LidarCaptureResult) -> Void)?
+  /// Nome del pasto mostrato nella top bar (come in expo-camera).
+  var mealTitle: String?
 
   private let sceneView = ARSCNView()
-  private let instruction = UILabel()
-  private let measureButton = UIButton(type: .system)
-  private let cancelButton = UIButton(type: .system)
-  private let crosshair = UIView()
+  private let titleLabel = UILabel()
+  private let closeButton = UIButton(type: .system)
+  private let shutterButton = UIButton(type: .custom)
+  private let shutterInner = UIView()
   private var didFinish = false
 
   override func viewDidLoad() {
@@ -96,64 +100,64 @@ final class LidarCaptureViewController: UIViewController, ARSessionDelegate {
     ])
   }
 
+  // Overlay identico alla schermata expo-camera: top bar (chiudi + nome pasto) e
+  // otturatore tondo bianco in basso. Niente mirino/istruzioni: il feed AR fa da
+  // anteprima come una fotocamera qualsiasi; la depth viene letta allo scatto.
   private func setupOverlay() {
-    // Mirino centrale
-    crosshair.translatesAutoresizingMaskIntoConstraints = false
-    crosshair.layer.borderColor = UIColor.white.withAlphaComponent(0.8).cgColor
-    crosshair.layer.borderWidth = 2
-    crosshair.layer.cornerRadius = 12
-    crosshair.backgroundColor = .clear
-    view.addSubview(crosshair)
+    closeButton.translatesAutoresizingMaskIntoConstraints = false
+    closeButton.setTitle("✕", for: .normal)
+    closeButton.setTitleColor(.white, for: .normal)
+    closeButton.titleLabel?.font = .systemFont(ofSize: 24, weight: .semibold)
+    closeButton.addTarget(self, action: #selector(onCancel), for: .touchUpInside)
+    view.addSubview(closeButton)
 
-    instruction.translatesAutoresizingMaskIntoConstraints = false
-    instruction.text = "Inquadra il piatto dall'alto, poi tocca Scatta"
-    instruction.textColor = .white
-    instruction.font = .systemFont(ofSize: 16, weight: .semibold)
-    instruction.numberOfLines = 0
-    instruction.textAlignment = .center
-    instruction.layer.shadowColor = UIColor.black.cgColor
-    instruction.layer.shadowOpacity = 0.8
-    instruction.layer.shadowRadius = 3
-    instruction.layer.shadowOffset = .zero
-    view.addSubview(instruction)
+    titleLabel.translatesAutoresizingMaskIntoConstraints = false
+    titleLabel.text = mealTitle
+    titleLabel.textColor = .white
+    titleLabel.font = .systemFont(ofSize: 16, weight: .bold)
+    titleLabel.textAlignment = .center
+    titleLabel.layer.shadowColor = UIColor.black.cgColor
+    titleLabel.layer.shadowOpacity = 0.6
+    titleLabel.layer.shadowRadius = 3
+    titleLabel.layer.shadowOffset = .zero
+    view.addSubview(titleLabel)
 
-    configureButton(measureButton, title: "Scatta", bg: UIColor.systemGreen)
-    measureButton.addTarget(self, action: #selector(onMeasure), for: .touchUpInside)
-    view.addSubview(measureButton)
+    // Otturatore: stesse misure dello shutter di expo-camera (76/56, anello bianco).
+    shutterButton.translatesAutoresizingMaskIntoConstraints = false
+    shutterButton.layer.cornerRadius = 38
+    shutterButton.layer.borderWidth = 5
+    shutterButton.layer.borderColor = UIColor.white.cgColor
+    shutterButton.backgroundColor = UIColor.white.withAlphaComponent(0.15)
+    shutterButton.addTarget(self, action: #selector(onMeasure), for: .touchUpInside)
+    view.addSubview(shutterButton)
 
-    configureButton(cancelButton, title: "Annulla", bg: UIColor(white: 0.2, alpha: 0.9))
-    cancelButton.addTarget(self, action: #selector(onCancel), for: .touchUpInside)
-    view.addSubview(cancelButton)
+    shutterInner.translatesAutoresizingMaskIntoConstraints = false
+    shutterInner.backgroundColor = .white
+    shutterInner.layer.cornerRadius = 28
+    shutterInner.isUserInteractionEnabled = false
+    shutterButton.addSubview(shutterInner)
 
     NSLayoutConstraint.activate([
-      crosshair.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-      crosshair.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-      crosshair.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.7),
-      crosshair.heightAnchor.constraint(equalTo: crosshair.widthAnchor),
+      closeButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+      closeButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
+      closeButton.widthAnchor.constraint(equalToConstant: 36),
+      closeButton.heightAnchor.constraint(equalToConstant: 36),
 
-      instruction.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
-      instruction.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
-      instruction.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 24),
+      titleLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+      titleLabel.centerYAnchor.constraint(equalTo: closeButton.centerYAnchor),
+      titleLabel.leadingAnchor.constraint(greaterThanOrEqualTo: closeButton.trailingAnchor, constant: 8),
+      titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -52),
 
-      measureButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-      measureButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -28),
-      measureButton.widthAnchor.constraint(equalToConstant: 200),
-      measureButton.heightAnchor.constraint(equalToConstant: 54),
+      shutterButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+      shutterButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -28),
+      shutterButton.widthAnchor.constraint(equalToConstant: 76),
+      shutterButton.heightAnchor.constraint(equalToConstant: 76),
 
-      cancelButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-      cancelButton.bottomAnchor.constraint(equalTo: measureButton.topAnchor, constant: -12),
-      cancelButton.widthAnchor.constraint(equalToConstant: 200),
-      cancelButton.heightAnchor.constraint(equalToConstant: 44),
+      shutterInner.centerXAnchor.constraint(equalTo: shutterButton.centerXAnchor),
+      shutterInner.centerYAnchor.constraint(equalTo: shutterButton.centerYAnchor),
+      shutterInner.widthAnchor.constraint(equalToConstant: 56),
+      shutterInner.heightAnchor.constraint(equalToConstant: 56),
     ])
-  }
-
-  private func configureButton(_ button: UIButton, title: String, bg: UIColor) {
-    button.translatesAutoresizingMaskIntoConstraints = false
-    button.setTitle(title, for: .normal)
-    button.setTitleColor(.white, for: .normal)
-    button.titleLabel?.font = .systemFont(ofSize: 18, weight: .bold)
-    button.backgroundColor = bg
-    button.layer.cornerRadius = 14
   }
 
   override func viewWillAppear(_ animated: Bool) {
@@ -178,10 +182,8 @@ final class LidarCaptureViewController: UIViewController, ARSessionDelegate {
   }
 
   @objc private func onMeasure() {
-    guard let frame = sceneView.session.currentFrame else {
-      instruction.text = "Inquadratura non ancora pronta, riprova"
-      return
-    }
+    // Se il primo frame AR non è ancora pronto, ignora il tap (niente messaggi a schermo).
+    guard let frame = sceneView.session.currentFrame else { return }
     let planes = frame.anchors.compactMap { $0 as? ARPlaneAnchor }.filter { $0.alignment == .horizontal }
     let measurement = VolumeEstimator.estimate(frame: frame, horizontalPlanes: planes)
 
