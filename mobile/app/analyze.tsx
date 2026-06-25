@@ -477,7 +477,7 @@ export default function AnalyzeScreen() {
 
           {/* Viste aggiuntive: altre angolazioni dello STESSO pasto, per dare più
               contesto a Gemini. Non vengono conteggiate doppie (lo dice il prompt). */}
-          <Text style={styles.label}>More views (optional)</Text>
+          <Text style={styles.label}>Add to context (optional)</Text>
           <Text style={styles.hintSmall}>
             Add other angles of the same meal to help the AI. They won't be double-counted.
           </Text>
