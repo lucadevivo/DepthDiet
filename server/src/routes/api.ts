@@ -24,6 +24,7 @@ import { mealsRouter } from "./meals.js";
 import { offRouter } from "./off.js";
 import { weightRouter } from "./weight.js";
 import { waterRouter } from "./water.js";
+import { creatineRouter } from "./creatine.js";
 
 /**
  * Router delle rotte APPLICATIVE protette. Montato dietro requireAuth in app.ts.
@@ -55,6 +56,23 @@ apiRouter.use("/weight", weightRouter);
 // Acqua: contatore giornaliero persistente (water_log).
 apiRouter.use("/water", waterRouter);
 
+// Creatina: flag giornaliero "presa/non presa" (creatine_log).
+apiRouter.use("/creatine", creatineRouter);
+
+/** Estrae una misura volumetrica valida ({ volumeMl, quality? }) o undefined. */
+function parseDepth(raw: unknown): { volumeMl: number; quality?: DepthQuality } | undefined {
+  if (typeof raw !== "object" || raw === null) return undefined;
+  const d = raw as Record<string, unknown>;
+  if (typeof d.volumeMl !== "number" || !Number.isFinite(d.volumeMl) || d.volumeMl <= 0) {
+    return undefined;
+  }
+  const depth: { volumeMl: number; quality?: DepthQuality } = { volumeMl: d.volumeMl };
+  if (DEPTH_QUALITIES.includes(d.quality as DepthQuality)) {
+    depth.quality = d.quality as DepthQuality;
+  }
+  return depth;
+}
+
 /** Validazione minima del corpo della richiesta di analisi. */
 function parseAnalyzeBody(body: unknown): AnalyzeInput | { error: string } {
   if (typeof body !== "object" || body === null) return { error: "body mancante" };
@@ -68,8 +86,9 @@ function parseAnalyzeBody(body: unknown): AnalyzeInput | { error: string } {
   }
   const input: AnalyzeInput = { imageBase64: b.imageBase64, mimeType: b.mimeType };
   // Viste aggiuntive dello stesso pasto (max 4): scarta voci malformate.
+  // Ognuna può portare la propria misura volumetrica LiDAR.
   if (Array.isArray(b.extraImages)) {
-    const extras: { imageBase64: string; mimeType: string }[] = [];
+    const extras: NonNullable<AnalyzeInput["extraImages"]> = [];
     for (const raw of b.extraImages) {
       if (typeof raw !== "object" || raw === null) continue;
       const e = raw as Record<string, unknown>;
@@ -79,22 +98,20 @@ function parseAnalyzeBody(body: unknown): AnalyzeInput | { error: string } {
         typeof e.mimeType === "string" &&
         e.mimeType.startsWith("image/")
       ) {
-        extras.push({ imageBase64: e.imageBase64, mimeType: e.mimeType });
+        const depth = parseDepth(e.depth);
+        extras.push({
+          imageBase64: e.imageBase64,
+          mimeType: e.mimeType,
+          ...(depth ? { depth } : {}),
+        });
       }
       if (extras.length >= 4) break;
     }
     if (extras.length > 0) input.extraImages = extras;
   }
   if (typeof b.contextText === "string") input.contextText = b.contextText;
-  if (typeof b.depth === "object" && b.depth !== null) {
-    const d = b.depth as Record<string, unknown>;
-    if (typeof d.volumeMl === "number" && Number.isFinite(d.volumeMl) && d.volumeMl > 0) {
-      input.depth = { volumeMl: d.volumeMl };
-      if (DEPTH_QUALITIES.includes(d.quality as DepthQuality)) {
-        input.depth.quality = d.quality as DepthQuality;
-      }
-    }
-  }
+  const depth = parseDepth(b.depth);
+  if (depth) input.depth = depth;
   if (typeof b.reference === "object" && b.reference !== null) {
     const r = b.reference as Record<string, unknown>;
     if (REFERENCE_TYPES.includes(r.type as ReferenceType)) {

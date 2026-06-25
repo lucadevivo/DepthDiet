@@ -23,6 +23,24 @@ export function getAllCustomFoods(): CustomFood[] {
     .all() as unknown as CustomFood[];
 }
 
+/**
+ * Alimenti Personali ordinati per FREQUENZA D'USO (quante volte compaiono nel
+ * diario), poi dai più recenti. Serve allo Scanner IA per dare a Gemini, quando
+ * la libreria è grande, prima gli alimenti che l'utente usa davvero.
+ */
+export function getCustomFoodsByUsage(): CustomFood[] {
+  return getDb()
+    .prepare(
+      `SELECT cf.id, cf.name, cf.brand, cf.barcode, cf.kcal_per_100, cf.protein_per_100,
+              cf.carbs_per_100, cf.fat_per_100, cf.default_serving_g
+         FROM custom_foods cf
+         LEFT JOIN diary_entries d ON d.custom_food_id = cf.id
+        GROUP BY cf.id
+        ORDER BY COUNT(d.id) DESC, cf.id DESC`,
+    )
+    .all() as unknown as CustomFood[];
+}
+
 export function getCustomFoodById(id: number): CustomFood | undefined {
   return getDb()
     .prepare(

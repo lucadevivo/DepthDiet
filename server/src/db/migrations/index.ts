@@ -3,6 +3,7 @@ import { migration_0001_init } from "./0001_init.js";
 import { migration_0002_diet_presets } from "./0002_diet_presets.js";
 import { migration_0003_custom_meals } from "./0003_custom_meals.js";
 import { migration_0004_bmr_formula } from "./0004_bmr_formula.js";
+import { migration_0005_creatine } from "./0005_creatine.js";
 
 /**
  * Elenco ordinato di tutte le migrazioni. Per aggiungerne una: crea 000N_nome.ts,
@@ -13,4 +14,5 @@ export const migrations: Migration[] = [
   migration_0002_diet_presets,
   migration_0003_custom_meals,
   migration_0004_bmr_formula,
+  migration_0005_creatine,
 ];

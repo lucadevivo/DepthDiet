@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { env } from "../../config/env.js";
-import { getAllCustomFoods, type CustomFood } from "../../repositories/customFoods.js";
+import { getCustomFoodsByUsage, type CustomFood } from "../../repositories/customFoods.js";
 import { matchFoodsInContext } from "./foodMatch.js";
 import { buildMealPrompt } from "./prompt.js";
 import { mealAnalysisSchema } from "./schema.js";
@@ -138,11 +138,17 @@ export async function analyzeMeal(input: AnalyzeInput): Promise<AnalyzeResult> {
   const ai = getClient();
 
   // 1. Match dal database PRIMA di chiamare Gemini.
-  const matched = matchFoodsInContext(input.contextText, getAllCustomFoods());
-  const matchedById = new Map(matched.map((f) => [f.id, f]));
+  // I "matched" dal contesto sono forzati nel prompt; la libreria (ordinata per
+  // frequenza d'uso) viene passata a Gemini perché possa abbinare ciò che l'utente
+  // nomina nel prompt o riconosce nel piatto — il prompt la taglia ai più usati.
+  // La mappa copre TUTTA la libreria così qualsiasi matched_food_id restituito
+  // viene ricalcolato sui macro reali del DB.
+  const allFoods = getCustomFoodsByUsage();
+  const matched = matchFoodsInContext(input.contextText, allFoods);
+  const matchedById = new Map(allFoods.map((f) => [f.id, f]));
 
   // 2. Prompt + immagine inline.
-  const prompt = buildMealPrompt(input, matched);
+  const prompt = buildMealPrompt(input, matched, allFoods);
 
   // 3. Chiamata con structured output nativo (con retry su errori transitori).
   // Prompt + immagine principale + eventuali viste aggiuntive dello stesso pasto.

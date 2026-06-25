@@ -13,6 +13,7 @@ import { ProgressBar } from "../../src/components/ProgressBar";
 import { MacroProgressColumn } from "../../src/components/MacroProgressColumn";
 import { MealCard } from "../../src/components/MealCard";
 import { WaterCounter } from "../../src/components/WaterCounter";
+import { CreatineToggle } from "../../src/components/CreatineToggle";
 import { Icon } from "../../src/components/Icon";
 import { bodyMetricsFromProfile } from "../../src/lib/bodyMetrics";
 
@@ -151,6 +152,9 @@ export default function DiaryScreen() {
               date={date}
               targetMl={bodyMetricsFromProfile(p)?.waterMl ?? 2500}
             />
+
+            {/* Creatina: casella da spuntare se è stata presa quel giorno. */}
+            <CreatineToggle date={date} />
 
             {/* Suggeritore IA: cosa mangiare per chiudere i macro mancanti del giorno. */}
             <Pressable

@@ -45,6 +45,7 @@ const MAP = {
   bmi: "body-outline",
   bodyfat: "fitness-outline",
   water: "water",
+  creatine: "medical-outline",
   weight: "barbell-outline",
   activity: "walk-outline",
   goal: "flag-outline",

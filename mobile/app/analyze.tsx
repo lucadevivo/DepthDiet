@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
+  useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PinchGestureHandler, type PinchGestureHandlerGestureEvent } from "react-native-gesture-handler";
@@ -36,11 +37,16 @@ import type { AddDiaryBody } from "../src/types/diary";
 
 type Phase = "pick" | "camera" | "captured" | "review";
 
-/** Foto catturata e pronta per l'analisi (compressa) + anteprima da mostrare. */
-interface Captured {
+/**
+ * Foto catturata e pronta per l'analisi (compressa) + anteprima da mostrare.
+ * Ogni scatto porta con sé la propria stima volumetrica LiDAR (se misurata), così
+ * il badge può comparire anche sulle viste aggiunte come contesto.
+ */
+interface Shot {
   previewUri: string;
   base64: string;
   mimeType: string;
+  depth: { volumeMl: number; quality: DepthQuality } | null;
 }
 
 /** Riga editabile derivata da un MealItem dell'analisi. */
@@ -121,6 +127,9 @@ export default function AnalyzeScreen() {
   const { colors, styles } = useThemed(makeStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  // Larghezza di una pagina del carosello foto (schermo meno il padding del contenuto).
+  const { width: winW } = useWindowDimensions();
+  const photoW = winW - 32;
 
   // Pasto e data ereditati dal Diario (così lo scan finisce sul giorno giusto).
   const params = useLocalSearchParams<{ meal_id?: string; date?: string }>();
@@ -140,16 +149,34 @@ export default function AnalyzeScreen() {
   const mealName = (meals.data ?? []).find((m) => m.id === mealId)?.name ?? "—";
 
   const [contextText, setContextText] = useState("");
-  const [captured, setCaptured] = useState<Captured | null>(null);
-  // Viste aggiuntive dello stesso pasto (altre angolazioni) inviate a Gemini.
-  const [extraImages, setExtraImages] = useState<Captured[]>([]);
+  // Tutte le foto del pasto: la prima è la principale, le altre sono viste
+  // aggiuntive (altre angolazioni) inviate a Gemini come contesto.
+  const [photos, setPhotos] = useState<Shot[]>([]);
+  // Foto attualmente visibile nel carosello (per i puntini indicatori).
+  const [activePhoto, setActivePhoto] = useState(0);
   // Lo scatto interno serve la foto principale o una vista extra?
   const [cameraMode, setCameraMode] = useState<"primary" | "extra">("primary");
-  // Stima volumetrica dal LiDAR (Fase 4b), allegata all'analisi quando presente.
-  const [depth, setDepth] = useState<{ volumeMl: number; quality: DepthQuality } | null>(null);
   // Il device ha il LiDAR e il modulo nativo è incluso nel build? (calcolato una volta)
   const lidarAvailable = useMemo(() => isLidarSupported(), []);
   const MAX_EXTRA = 3;
+  const MAX_PHOTOS = MAX_EXTRA + 1;
+
+  // Imposta/sostituisce la foto principale mantenendo le viste aggiuntive.
+  const setPrimaryShot = (s: Shot) =>
+    setPhotos((prev) => (prev.length > 0 ? [s, ...prev.slice(1)] : [s]));
+  // Aggiunge una vista extra (fino al massimo consentito).
+  const addShot = (s: Shot) =>
+    setPhotos((prev) => (prev.length >= MAX_PHOTOS ? prev : [...prev, s]));
+  // Rimuove la foto all'indice: se non resta nulla si torna alla scelta sorgente.
+  const removePhotoAt = (idx: number) => {
+    const next = photos.filter((_, i) => i !== idx);
+    setPhotos(next);
+    setActivePhoto((a) => Math.max(0, Math.min(a, next.length - 1)));
+    if (next.length === 0) {
+      setError(null);
+      setPhase("pick");
+    }
+  };
   const [items, setItems] = useState<EditItem[]>([]);
   const [notes, setNotes] = useState<string | undefined>();
   const [error, setError] = useState<string | null>(null);
@@ -186,7 +213,7 @@ export default function AnalyzeScreen() {
     // volume in una mira sola): l'utente non sceglie nulla, come per il reference
     // object. Lo schermo nativo gestisce da sé i permessi fotocamera.
     if (lidarAvailable) {
-      await captureWithLidar();
+      await captureWithLidar("primary");
       return;
     }
     if (!permission?.granted) {
@@ -201,12 +228,16 @@ export default function AnalyzeScreen() {
 
   // --- Viste aggiuntive (altre angolazioni dello stesso pasto) ---
 
-  // Foto extra dalla fotocamera: sempre la camera normale (la depth serve solo
-  // alla principale), così è veloce aggiungere più scatti.
+  // Foto extra dalla fotocamera: se il device ha il LiDAR la misuriamo anche qui
+  // (così il badge volume compare pure sulle viste extra), altrimenti camera normale.
   const addExtraFromCamera = async () => {
-    if (extraImages.length >= MAX_EXTRA) return;
+    if (photos.length >= MAX_PHOTOS) return;
     setError(null);
     setCameraMode("extra");
+    if (lidarAvailable) {
+      await captureWithLidar("extra");
+      return;
+    }
     if (!permission?.granted) {
       const res = await requestPermission();
       if (!res.granted) {
@@ -218,22 +249,21 @@ export default function AnalyzeScreen() {
   };
 
   const addExtraFromGallery = async () => {
-    if (extraImages.length >= MAX_EXTRA) return;
+    if (photos.length >= MAX_PHOTOS) return;
     setError(null);
     try {
       const img = await pickAndPrepareMealImage("library");
-      setExtraImages((prev) => [
-        ...prev,
-        { previewUri: `data:${img.mimeType};base64,${img.base64}`, base64: img.base64, mimeType: img.mimeType },
-      ]);
+      addShot({
+        previewUri: `data:${img.mimeType};base64,${img.base64}`,
+        base64: img.base64,
+        mimeType: img.mimeType,
+        depth: null,
+      });
     } catch (e) {
       if (e instanceof ImagePickCancelled) return;
       setError("Couldn't load the image. Try again.");
     }
   };
-
-  const removeExtra = (idx: number) =>
-    setExtraImages((prev) => prev.filter((_, i) => i !== idx));
 
   const takePhoto = async () => {
     if (!cameraRef.current || capturing) return;
@@ -241,13 +271,15 @@ export default function AnalyzeScreen() {
     try {
       const photo = await cameraRef.current.takePictureAsync({ quality: 1 });
       const prepared = await prepareMealImage(photo.uri, photo.width, photo.height);
-      const shot = { previewUri: photo.uri, base64: prepared.base64, mimeType: prepared.mimeType };
-      if (cameraMode === "extra") {
-        setExtraImages((prev) => [...prev, shot]);
-      } else {
-        setDepth(null); // foto normale: nessun volume
-        setCaptured(shot);
-      }
+      // Foto da camera normale: nessun volume (la depth serve il LiDAR).
+      const shot: Shot = {
+        previewUri: photo.uri,
+        base64: prepared.base64,
+        mimeType: prepared.mimeType,
+        depth: null,
+      };
+      if (cameraMode === "extra") addShot(shot);
+      else setPrimaryShot(shot);
       setPhase("captured");
     } catch {
       setError("Couldn't take the photo. Try again.");
@@ -258,17 +290,23 @@ export default function AnalyzeScreen() {
 
   // Cattura LiDAR (Fase 4b): una mira → foto RGB + stima del volume del cibo, già
   // allineate. Il volume diventa un indizio per l'IA (migliora la stima delle porzioni).
-  const captureWithLidar = async () => {
+  const captureWithLidar = async (mode: "primary" | "extra") => {
     setError(null);
     try {
       const res = await captureMealWithLidar(mealName);
-      setCaptured({
+      // Allego il volume solo se la misura è utile (quality "none" = scartata).
+      const depth =
+        res.volumeMl > 0 && res.quality !== "none"
+          ? { volumeMl: res.volumeMl, quality: res.quality }
+          : null;
+      const shot: Shot = {
         previewUri: `data:${res.mimeType};base64,${res.imageBase64}`,
         base64: res.imageBase64,
         mimeType: res.mimeType,
-      });
-      // Allego il volume solo se la misura è utile (quality "none" = scartata).
-      setDepth(res.volumeMl > 0 && res.quality !== "none" ? { volumeMl: res.volumeMl, quality: res.quality } : null);
+        depth,
+      };
+      if (mode === "extra") addShot(shot);
+      else setPrimaryShot(shot);
       setPhase("captured");
     } catch (e) {
       if (e instanceof LidarCancelled) return; // annullato dall'utente: nessun errore
@@ -280,11 +318,11 @@ export default function AnalyzeScreen() {
     setError(null);
     try {
       const img = await pickAndPrepareMealImage("library");
-      setDepth(null); // immagine da galleria: nessun volume
-      setCaptured({
+      setPrimaryShot({
         previewUri: `data:${img.mimeType};base64,${img.base64}`,
         base64: img.base64,
         mimeType: img.mimeType,
+        depth: null, // immagine da galleria: nessun volume
       });
       setPhase("captured");
     } catch (e) {
@@ -300,17 +338,25 @@ export default function AnalyzeScreen() {
   // --- Analisi (separata dalla cattura: si invia solo quando l'utente preme) ---
 
   const runAnalysis = async () => {
-    if (!captured) return;
+    const primary = photos[0];
+    if (!primary) return;
     setError(null);
     try {
+      const extras = photos.slice(1);
+      // Ogni foto manda la propria misura LiDAR: la principale in `depth`, le viste
+      // extra ciascuna nella sua voce. Il server le tratta come misure ripetute.
       const body: AnalyzeBody = {
-        imageBase64: captured.base64,
-        mimeType: captured.mimeType,
+        imageBase64: primary.base64,
+        mimeType: primary.mimeType,
         contextText: contextText.trim() || undefined,
-        depth: depth ?? undefined,
+        depth: primary.depth ?? undefined,
         extraImages:
-          extraImages.length > 0
-            ? extraImages.map((e) => ({ imageBase64: e.base64, mimeType: e.mimeType }))
+          extras.length > 0
+            ? extras.map((e) => ({
+                imageBase64: e.base64,
+                mimeType: e.mimeType,
+                ...(e.depth ? { depth: e.depth } : {}),
+              }))
             : undefined,
       };
       const result = await analyze.mutateAsync(body);
@@ -462,16 +508,56 @@ export default function AnalyzeScreen() {
         >
           <Text style={styles.label}>Meal: {mealName}</Text>
 
-          {captured ? (
-            <Image source={{ uri: captured.previewUri }} style={styles.preview} resizeMode="cover" />
-          ) : null}
-
-          {depth ? (
-            <View style={styles.depthBadge}>
-              <Icon name="ruler" size={16} color={colors.primary} />
-              <Text style={styles.depthText}>
-                Volume measured with LiDAR: ~{Math.round(depth.volumeMl)} ml ({depth.quality})
-              </Text>
+          {/* Carosello foto: principale + viste aggiuntive una accanto all'altra.
+              Scorri per vederle; ognuna ha la X per rimuoverla e il badge LiDAR se
+              la sua profondità è stata misurata. */}
+          {photos.length > 0 ? (
+            <View>
+              <ScrollView
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onMomentumScrollEnd={(e) =>
+                  setActivePhoto(Math.round(e.nativeEvent.contentOffset.x / photoW))
+                }
+              >
+                {photos.map((shot, i) => (
+                  <View key={i} style={{ width: photoW }}>
+                    <Image
+                      source={{ uri: shot.previewUri }}
+                      style={styles.preview}
+                      resizeMode="cover"
+                    />
+                    {i === 0 ? (
+                      <View style={styles.mainTag}>
+                        <Text style={styles.mainTagText}>Main</Text>
+                      </View>
+                    ) : null}
+                    {shot.depth ? (
+                      <View style={styles.lidarBadge}>
+                        <Icon name="ruler" size={13} color="#fff" />
+                        <Text style={styles.lidarBadgeText}>
+                          LiDAR ~{Math.round(shot.depth.volumeMl)} ml
+                        </Text>
+                      </View>
+                    ) : null}
+                    <Pressable
+                      style={styles.photoRemove}
+                      onPress={() => removePhotoAt(i)}
+                      hitSlop={8}
+                    >
+                      <Icon name="close" size={16} color="#fff" />
+                    </Pressable>
+                  </View>
+                ))}
+              </ScrollView>
+              {photos.length > 1 ? (
+                <View style={styles.dots}>
+                  {photos.map((_, i) => (
+                    <View key={i} style={[styles.dot, i === activePhoto && styles.dotActive]} />
+                  ))}
+                </View>
+              ) : null}
             </View>
           ) : null}
 
@@ -481,19 +567,7 @@ export default function AnalyzeScreen() {
           <Text style={styles.hintSmall}>
             Add other angles of the same meal to help the AI. They won't be double-counted.
           </Text>
-          {extraImages.length > 0 ? (
-            <View style={styles.thumbRow}>
-              {extraImages.map((img, i) => (
-                <View key={i} style={styles.thumbWrap}>
-                  <Image source={{ uri: img.previewUri }} style={styles.thumb} resizeMode="cover" />
-                  <Pressable style={styles.thumbRemove} onPress={() => removeExtra(i)} hitSlop={8}>
-                    <Icon name="close" size={13} color="#fff" />
-                  </Pressable>
-                </View>
-              ))}
-            </View>
-          ) : null}
-          {extraImages.length < MAX_EXTRA ? (
+          {photos.length < MAX_PHOTOS ? (
             <View style={styles.addRow}>
               <Pressable style={styles.addBtn} onPress={addExtraFromCamera}>
                 <Icon name="camera" size={16} color={colors.text} />
@@ -745,37 +819,44 @@ const makeStyles = (colors: ThemeColors) =>
     secondaryText: { color: colors.text, fontSize: 15, fontWeight: "700" },
     disabled: { opacity: 0.5 },
     hintSmall: { color: colors.textMuted, fontSize: 12, lineHeight: 16, marginTop: -2 },
-    depthBadge: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 8,
-      backgroundColor: colors.primary + "1A",
-      borderRadius: 12,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-    },
-    depthText: { color: colors.text, fontSize: 13, fontWeight: "600", flex: 1 },
-    thumbRow: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-    thumbWrap: { width: 72, height: 72 },
-    thumb: {
-      width: 72,
-      height: 72,
-      borderRadius: 12,
-      backgroundColor: colors.surfaceAlt,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    thumbRemove: {
+    // Carosello foto (anteprima principale + viste extra affiancate)
+    photoRemove: {
       position: "absolute",
-      top: -6,
-      right: -6,
-      width: 22,
-      height: 22,
-      borderRadius: 11,
-      backgroundColor: "rgba(0,0,0,0.75)",
+      top: 8,
+      right: 8,
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: "rgba(0,0,0,0.6)",
       alignItems: "center",
       justifyContent: "center",
     },
+    mainTag: {
+      position: "absolute",
+      top: 8,
+      left: 8,
+      backgroundColor: "rgba(0,0,0,0.55)",
+      borderRadius: 8,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+    },
+    mainTagText: { color: "#fff", fontSize: 11, fontWeight: "800" },
+    lidarBadge: {
+      position: "absolute",
+      bottom: 8,
+      left: 8,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      backgroundColor: "rgba(0,0,0,0.6)",
+      borderRadius: 10,
+      paddingHorizontal: 9,
+      paddingVertical: 5,
+    },
+    lidarBadgeText: { color: "#fff", fontSize: 12, fontWeight: "700" },
+    dots: { flexDirection: "row", justifyContent: "center", gap: 6, marginTop: 8 },
+    dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.border },
+    dotActive: { backgroundColor: colors.primary },
     addRow: { flexDirection: "row", gap: 10 },
     addBtn: {
       flex: 1,

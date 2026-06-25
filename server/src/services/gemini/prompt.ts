@@ -21,7 +21,11 @@ const DEPTH_QUALITY_LABEL: Record<DepthQuality, string> = {
  *  - stimare solo il resto e le quantità;
  *  - sfruttare l'eventuale ipotesi volumetrica (LiDAR) come indizio, non come certezza.
  */
-export function buildMealPrompt(input: AnalyzeInput, matched: CustomFood[]): string {
+export function buildMealPrompt(
+  input: AnalyzeInput,
+  matched: CustomFood[],
+  library: CustomFood[] = [],
+): string {
   const lines: string[] = [];
 
   lines.push(
@@ -64,6 +68,30 @@ export function buildMealPrompt(input: AnalyzeInput, matched: CustomFood[]): str
     }
   }
 
+  // Libreria completa degli Alimenti Personali (esclusi quelli già forzati sopra):
+  // serve perché Gemini possa abbinarli quando l'utente li nomina nel prompt
+  // (es. "la pasta è la mia preferita") o li riconosce con certezza nel piatto.
+  // Così non reinventa i macro di un alimento che l'utente ha già salvato.
+  const matchedIds = new Set(matched.map((f) => f.id));
+  const others = library.filter((f) => !matchedIds.has(f.id)).slice(0, 80);
+  if (others.length > 0) {
+    lines.push(
+      "",
+      "LIBRERIA ALIMENTI PERSONALI dell'utente (per riferimento). Se il contesto/prompt",
+      'nomina uno di questi (anche genericamente, es. "la pasta è la mia"), oppure se',
+      'riconosci con certezza uno di questi nel piatto, USALO: imposta source="matched",',
+      "matched_food_id all'id corrispondente e usa i macro per 100g indicati (NON",
+      "reinventarli), stimando solo i grammi. Nel dubbio NON forzare l'abbinamento.",
+    );
+    for (const f of others) {
+      const label = f.brand ? `${f.name} (${f.brand})` : f.name;
+      lines.push(
+        `- id=${f.id} "${label}": ${f.kcal_per_100} kcal, ` +
+          `P ${f.protein_per_100}g, C ${f.carbs_per_100}g, G ${f.fat_per_100}g per 100g`,
+      );
+    }
+  }
+
   if (input.reference?.type != null) {
     // Riferimento esplicito (compatibilità con vecchie richieste): l'utente ha
     // dichiarato l'oggetto presente in foto.
@@ -91,17 +119,45 @@ export function buildMealPrompt(input: AnalyzeInput, matched: CustomFood[]): str
     );
   }
 
+  // Indizi volumetrici LiDAR: quello della foto principale + quelli delle eventuali
+  // viste extra. Sono misure RIPETUTE dello stesso piatto da angolazioni diverse:
+  // vanno incrociate per una stima migliore, NON sommate.
+  const depths: { label: string; volumeMl: number; quality: DepthQuality }[] = [];
   if (input.depth?.volumeMl != null) {
-    const q = input.depth.quality ?? "medium";
+    depths.push({
+      label: "foto principale",
+      volumeMl: input.depth.volumeMl,
+      quality: input.depth.quality ?? "medium",
+    });
+  }
+  (input.extraImages ?? []).forEach((img, i) => {
+    if (img.depth?.volumeMl != null) {
+      depths.push({
+        label: `vista aggiuntiva ${i + 1}`,
+        volumeMl: img.depth.volumeMl,
+        quality: img.depth.quality ?? "medium",
+      });
+    }
+  });
+  if (depths.length > 0) {
     lines.push(
       "",
-      `Indizio volumetrico (da sensore di profondità LiDAR): ~${Math.round(input.depth.volumeMl)} ml` +
-        ` (affidabilità della misura: ${DEPTH_QUALITY_LABEL[q]}).`,
-      "Usalo come aiuto per stimare le porzioni: volume→massa→macro richiede assunzioni",
-      "di densità, quindi trattalo come stima approssimativa, non certa.",
+      depths.length === 1
+        ? "Indizio volumetrico (da sensore di profondità LiDAR):"
+        : "Indizi volumetrici (da sensore LiDAR) — MISURE RIPETUTE dello stesso piatto da" +
+            " angolazioni diverse, da INCROCIARE per una stima migliore, NON da sommare:",
     );
-    if (q === "low") {
-      lines.push("Affidabilità BASSA: pesalo poco e dai priorità a ciò che vedi nell'immagine.");
+    for (const d of depths) {
+      lines.push(
+        `- ${d.label}: ~${Math.round(d.volumeMl)} ml (affidabilità: ${DEPTH_QUALITY_LABEL[d.quality]}).`,
+      );
+    }
+    lines.push(
+      "Usali come aiuto per stimare le porzioni: volume→massa→macro richiede assunzioni",
+      "di densità, quindi trattali come stime approssimative, non certe.",
+    );
+    if (depths.every((d) => d.quality === "low")) {
+      lines.push("Affidabilità BASSA: pesali poco e dai priorità a ciò che vedi nell'immagine.");
     }
   }
 
