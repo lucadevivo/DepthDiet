@@ -1,6 +1,7 @@
 import { View, Text, Pressable, ActivityIndicator, StyleSheet } from "react-native";
 import { useTheme, useThemed } from "../theme/ThemeProvider";
 import type { ThemeColors } from "../theme/colors";
+import { useI18n } from "../i18n";
 import type { OffProduct } from "../types/food";
 
 export type ImportStatus = "idle" | "pending" | "done" | "duplicate" | "error";
@@ -33,12 +34,13 @@ export function OffProductRow({ product, status, onImport }: Props) {
 
 function ImportButton({ status, onPress }: { status: ImportStatus; onPress: () => void }) {
   const { colors, styles } = useThemed(makeStyles);
+  const { t } = useI18n();
   if (status === "pending") return <ActivityIndicator color={colors.primary} />;
-  if (status === "done") return <Text style={[styles.tag, { color: colors.calories }]}>✓ Imported</Text>;
-  if (status === "duplicate") return <Text style={[styles.tag, { color: colors.textMuted }]}>Already added</Text>;
+  if (status === "done") return <Text style={[styles.tag, { color: colors.calories }]}>{t("off.imported")}</Text>;
+  if (status === "duplicate") return <Text style={[styles.tag, { color: colors.textMuted }]}>{t("off.alreadyAdded")}</Text>;
   return (
     <Pressable onPress={onPress} style={styles.btn}>
-      <Text style={styles.btnText}>{status === "error" ? "Retry" : "Import"}</Text>
+      <Text style={styles.btnText}>{status === "error" ? t("common.retry") : t("off.import")}</Text>
     </Pressable>
   );
 }

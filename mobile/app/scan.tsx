@@ -7,11 +7,13 @@ import { ScreenHeader } from "../src/components/ScreenHeader";
 import { OffProductRow } from "../src/components/OffProductRow";
 import { useTheme, useThemed } from "../src/theme/ThemeProvider";
 import type { ThemeColors } from "../src/theme/colors";
+import { useI18n } from "../src/i18n";
 import { lookupBarcode } from "../src/api/off";
 import { useImportOff } from "../src/hooks/useImportOff";
 
 export default function ScanScreen() {
   const { colors, styles } = useThemed(makeStyles);
+  const { t } = useI18n();
   const [permission, requestPermission] = useCameraPermissions();
   const [code, setCode] = useState<string | null>(null);
   const { importProduct, statusOf } = useImportOff();
@@ -28,15 +30,15 @@ export default function ScanScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader title="Scan barcode" />
+      <ScreenHeader title={t("barcode.title")} />
 
       {!permission ? (
         <ActivityIndicator color={colors.primary} style={{ marginTop: 24 }} />
       ) : !permission.granted ? (
         <View style={styles.center}>
-          <Text style={styles.info}>Camera permission is needed to scan products.</Text>
+          <Text style={styles.info}>{t("barcode.permNeeded")}</Text>
           <Pressable onPress={requestPermission} style={styles.btn}>
-            <Text style={styles.btnText}>Allow camera</Text>
+            <Text style={styles.btnText}>{t("barcode.allowCamera")}</Text>
           </Pressable>
         </View>
       ) : (
@@ -44,7 +46,7 @@ export default function ScanScreen() {
           <View style={styles.cameraBox}>
             {code ? (
               <View style={styles.cameraPlaceholder}>
-                <Text style={styles.code}>Code: {code}</Text>
+                <Text style={styles.code}>{t("barcode.code", { code })}</Text>
               </View>
             ) : (
               <CameraView
@@ -59,11 +61,11 @@ export default function ScanScreen() {
 
           <View style={styles.result}>
             {!code ? (
-              <Text style={styles.hint}>Point at the product barcode.</Text>
+              <Text style={styles.hint}>{t("barcode.point")}</Text>
             ) : lookup.isLoading ? (
               <ActivityIndicator color={colors.primary} />
             ) : lookup.isError ? (
-              <Text style={styles.error}>Network error during lookup. Try again.</Text>
+              <Text style={styles.error}>{t("barcode.lookupError")}</Text>
             ) : lookup.data ? (
               <OffProductRow
                 product={lookup.data}
@@ -72,16 +74,16 @@ export default function ScanScreen() {
               />
             ) : (
               <View style={{ gap: 8 }}>
-                <Text style={styles.info}>Product not found on Open Food Facts.</Text>
+                <Text style={styles.info}>{t("barcode.notFound")}</Text>
                 <Link href="/foods" style={styles.link}>
-                  Add it manually in Foods →
+                  {t("barcode.addManually")}
                 </Link>
               </View>
             )}
 
             {code ? (
               <Pressable onPress={() => setCode(null)} style={[styles.btn, styles.again]}>
-                <Text style={styles.btnText}>Scan again</Text>
+                <Text style={styles.btnText}>{t("barcode.scanAgain")}</Text>
               </Pressable>
             ) : null}
           </View>

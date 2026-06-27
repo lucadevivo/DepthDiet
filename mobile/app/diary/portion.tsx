@@ -14,6 +14,7 @@ import { MacroDonut } from "../../src/components/MacroDonut";
 import { Icon } from "../../src/components/Icon";
 import { useThemed } from "../../src/theme/ThemeProvider";
 import type { ThemeColors } from "../../src/theme/colors";
+import { useI18n } from "../../src/i18n";
 import { todayISO } from "../../src/lib/date";
 import { useAddDiaryEntry } from "../../src/hooks/useDiary";
 import { useFoodQuery, useUpdateFood } from "../../src/hooks/useFoods";
@@ -41,6 +42,7 @@ function toInput(food: CustomFood, default_serving_g: number | null): CustomFood
  */
 export default function PortionScreen() {
   const { colors, styles } = useThemed(makeStyles);
+  const { t } = useI18n();
   const router = useRouter();
 
   const params = useLocalSearchParams<{ food_id?: string; meal_id?: string; date?: string }>();
@@ -94,7 +96,7 @@ export default function PortionScreen() {
   if (foodQ.isLoading) {
     return (
       <View style={styles.screen}>
-        <ScreenHeader title="Portion" />
+        <ScreenHeader title={t("portion.title")} />
         <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
       </View>
     );
@@ -102,8 +104,8 @@ export default function PortionScreen() {
   if (foodQ.isError || !food) {
     return (
       <View style={styles.screen}>
-        <ScreenHeader title="Portion" />
-        <Text style={[styles.error, { padding: 16 }]}>Couldn't load this food.</Text>
+        <ScreenHeader title={t("portion.title")} />
+        <Text style={[styles.error, { padding: 16 }]}>{t("portion.loadError")}</Text>
       </View>
     );
   }
@@ -122,16 +124,16 @@ export default function PortionScreen() {
         {/* Distribuzione macro in forma testuale. */}
         <View style={styles.card}>
           <View style={styles.row}>
-            <Text style={styles.rowLabel}>Calories</Text>
+            <Text style={styles.rowLabel}>{t("common.calories")}</Text>
             <Text style={styles.rowValue}>{Math.round(macros.kcal)} kcal</Text>
           </View>
           <View style={styles.sep} />
-          <MacroRow label="Protein" value={macros.protein} color={colors.protein} styles={styles} />
-          <MacroRow label="Carbs" value={macros.carbs} color={colors.carbs} styles={styles} />
-          <MacroRow label="Fat" value={macros.fat} color={colors.fat} styles={styles} />
+          <MacroRow label={t("common.protein")} value={macros.protein} color={colors.protein} styles={styles} />
+          <MacroRow label={t("common.carbs")} value={macros.carbs} color={colors.carbs} styles={styles} />
+          <MacroRow label={t("common.fat")} value={macros.fat} color={colors.fat} styles={styles} />
         </View>
 
-        <NumberField label="Grams" value={grams} onChangeText={setGrams} unit="g" />
+        <NumberField label={t("common.grams")} value={grams} onChangeText={setGrams} unit="g" />
 
         {/* Salva la grammatura corrente come porzione predefinita di questo cibo. */}
         <Pressable
@@ -142,8 +144,8 @@ export default function PortionScreen() {
           <Icon name={isDefault ? "check" : "weight"} size={18} color={colors.primary} />
           <Text style={styles.defaultText}>
             {isDefault
-              ? `Default portion: ${Math.round(g)} g`
-              : `Set ${validGrams ? Math.round(g) : "—"} g as default portion`}
+              ? t("portion.defaultIs", { g: Math.round(g) })
+              : t("portion.setDefault", { g: validGrams ? Math.round(g) : "—" })}
           </Text>
           {update.isPending ? <ActivityIndicator color={colors.primary} /> : null}
         </Pressable>
@@ -156,10 +158,10 @@ export default function PortionScreen() {
           {add.isPending ? (
             <ActivityIndicator color={colors.onPrimary} />
           ) : (
-            <Text style={styles.saveText}>Add</Text>
+            <Text style={styles.saveText}>{t("common.add")}</Text>
           )}
         </Pressable>
-        {add.isError ? <Text style={styles.error}>Something went wrong. Try again.</Text> : null}
+        {add.isError ? <Text style={styles.error}>{t("common.genericError")}</Text> : null}
       </ScrollView>
     </View>
   );

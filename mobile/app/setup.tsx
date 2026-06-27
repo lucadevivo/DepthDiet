@@ -11,6 +11,7 @@ import {
 import { ScreenHeader } from "../src/components/ScreenHeader";
 import { useTheme, useThemed } from "../src/theme/ThemeProvider";
 import type { ThemeColors } from "../src/theme/colors";
+import { useI18n } from "../src/i18n";
 import { apiFetch } from "../src/api/client";
 import { queryClient } from "../src/api/queryClient";
 import { SECRET_KEYS, getSecret, setSecret, deleteSecret } from "../src/lib/secureStore";
@@ -19,6 +20,7 @@ type TestState = "idle" | "testing" | "ok" | "fail";
 
 export default function SetupScreen() {
   const { colors, styles } = useThemed(makeStyles);
+  const { t } = useI18n();
   const [bearer, setBearer] = useState("");
   const [cfId, setCfId] = useState("");
   const [cfSecret, setCfSecret] = useState("");
@@ -83,7 +85,7 @@ export default function SetupScreen() {
   if (!loaded) {
     return (
       <View style={styles.screen}>
-        <ScreenHeader title="Settings" />
+        <ScreenHeader title={t("settings.credentials")} />
         <ActivityIndicator color={colors.primary} style={{ marginTop: 32 }} />
       </View>
     );
@@ -91,16 +93,14 @@ export default function SetupScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader title="Settings" />
+      <ScreenHeader title={t("settings.credentials")} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.lead}>
-          Backend access credentials. They stay in the phone Keychain, never in the bundle.
-        </Text>
+        <Text style={styles.lead}>{t("setup.lead")}</Text>
 
-        <Text style={styles.label}>Bearer token (required)</Text>
+        <Text style={styles.label}>{t("setup.bearer")}</Text>
         <TextInput
           style={styles.input}
-          placeholder="Paste APP_BEARER_TOKEN"
+          placeholder={t("setup.pasteToken")}
           placeholderTextColor={colors.textMuted}
           value={bearer}
           onChangeText={setBearer}
@@ -109,11 +109,11 @@ export default function SetupScreen() {
           secureTextEntry
         />
 
-        <Text style={styles.section}>Cloudflare Access (optional, production only)</Text>
+        <Text style={styles.section}>{t("setup.cfSection")}</Text>
         <Text style={styles.label}>CF-Access-Client-Id</Text>
         <TextInput
           style={styles.input}
-          placeholder="Leave empty in dev"
+          placeholder={t("setup.cfEmptyDev")}
           placeholderTextColor={colors.textMuted}
           value={cfId}
           onChangeText={setCfId}
@@ -123,7 +123,7 @@ export default function SetupScreen() {
         <Text style={styles.label}>CF-Access-Client-Secret</Text>
         <TextInput
           style={styles.input}
-          placeholder="Leave empty in dev"
+          placeholder={t("setup.cfEmptyDev")}
           placeholderTextColor={colors.textMuted}
           value={cfSecret}
           onChangeText={setCfSecret}
@@ -133,22 +133,20 @@ export default function SetupScreen() {
         />
 
         <Pressable style={[styles.primaryBtn, saving && styles.disabled]} disabled={saving} onPress={onSave}>
-          {saving ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.primaryText}>Save credentials</Text>}
+          {saving ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.primaryText}>{t("setup.saveCreds")}</Text>}
         </Pressable>
-        {saved ? <Text style={styles.ok}>✓ Saved to Keychain.</Text> : null}
+        {saved ? <Text style={styles.ok}>{t("setup.savedKeychain")}</Text> : null}
 
         <Pressable style={styles.secondaryBtn} onPress={onTest}>
           {test === "testing" ? (
             <ActivityIndicator color={colors.text} />
           ) : (
-            <Text style={styles.secondaryText}>Test connection</Text>
+            <Text style={styles.secondaryText}>{t("setup.testConnection")}</Text>
           )}
         </Pressable>
-        {test === "ok" ? <Text style={styles.ok}>✓ Backend reachable and authentication ok.</Text> : null}
+        {test === "ok" ? <Text style={styles.ok}>{t("setup.testOk")}</Text> : null}
         {test === "fail" ? (
-          <Text style={styles.error}>
-            Connection failed. Check the token, that the backend is running and you are on the same network.
-          </Text>
+          <Text style={styles.error}>{t("setup.testFail")}</Text>
         ) : null}
       </ScrollView>
     </View>

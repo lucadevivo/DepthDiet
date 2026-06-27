@@ -110,6 +110,7 @@ function parseAnalyzeBody(body: unknown): AnalyzeInput | { error: string } {
     if (extras.length > 0) input.extraImages = extras;
   }
   if (typeof b.contextText === "string") input.contextText = b.contextText;
+  if (typeof b.lang === "string") input.lang = b.lang;
   const depth = parseDepth(b.depth);
   if (depth) input.depth = depth;
   if (typeof b.reference === "object" && b.reference !== null) {
@@ -169,6 +170,7 @@ apiRouter.post("/suggest", async (req: Request, res: Response) => {
   }
   const onlyLibrary = b.onlyLibrary === true;
   const note = typeof b.note === "string" ? b.note.slice(0, 500) : undefined;
+  const lang = typeof b.lang === "string" ? b.lang : undefined;
 
   const profile = getProfile();
   if (profile?.target_calories == null) {
@@ -189,6 +191,7 @@ apiRouter.post("/suggest", async (req: Request, res: Response) => {
       remaining,
       onlyLibrary,
       note,
+      lang,
       foods: getAllCustomFoods(),
       recipes: getAllRecipes(),
     });

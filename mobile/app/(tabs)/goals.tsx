@@ -3,6 +3,7 @@ import { ScrollView, View, Text, Pressable, Modal, ActivityIndicator, StyleSheet
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme, useThemed } from "../../src/theme/ThemeProvider";
 import type { ThemeColors } from "../../src/theme/colors";
+import { useI18n } from "../../src/i18n";
 import { useProfileQuery, useUpdateDiet } from "../../src/hooks/useProfile";
 import { MacroDonut } from "../../src/components/MacroDonut";
 import { MetricCard } from "../../src/components/MetricCard";
@@ -27,6 +28,7 @@ function pctLabel(pct: MacroPercentages): string {
  */
 export default function GoalsScreen() {
   const { colors, styles } = useThemed(makeStyles);
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const profile = useProfileQuery();
   const updateDiet = useUpdateDiet();
@@ -49,7 +51,7 @@ export default function GoalsScreen() {
     <View style={styles.screen}>
       {/* Titolo fisso in alto: resta in cima quando si scorre (come il Diary). */}
       <View style={[styles.titleBar, { paddingTop: insets.top + 8 }]}>
-        <Text style={styles.heading}>Goals</Text>
+        <Text style={styles.heading}>{t("goals.title")}</Text>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}
@@ -61,7 +63,7 @@ export default function GoalsScreen() {
         <ActivityIndicator color={colors.primary} style={{ marginTop: 24 }} />
       ) : noTargets ? (
         <View style={styles.card}>
-          <Text style={styles.note}>Set your data in the Profile tab to compute your goals.</Text>
+          <Text style={styles.note}>{t("goals.noTargets")}</Text>
         </View>
       ) : (
         <>
@@ -70,7 +72,7 @@ export default function GoalsScreen() {
           <MetricCard
             icon="goal"
             iconColor="#22C55E"
-            label="Daily caloric requirement"
+            label={t("goals.dailyReq")}
             value={`${p!.target_calories} kcal`}
             onPress={() => setInfoOpen(true)}
             info
@@ -78,7 +80,7 @@ export default function GoalsScreen() {
 
           {/* Macronutrienti correnti. */}
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Macronutrients</Text>
+            <Text style={styles.cardTitle}>{t("goals.macros")}</Text>
             <MacroDonut
               protein_g={p!.target_protein_g ?? 0}
               carbs_g={p!.target_carbs_g ?? 0}
@@ -88,7 +90,7 @@ export default function GoalsScreen() {
 
           {/* Selettore preset dieta. */}
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Diet preset</Text>
+            <Text style={styles.cardTitle}>{t("goals.dietPreset")}</Text>
             <View style={{ gap: 8 }}>
               {DIET_PRESET_OPTIONS.map((opt) => {
                 const active = opt.value === selectedPreset;
@@ -100,7 +102,7 @@ export default function GoalsScreen() {
                           protein_pct: p!.diet_protein_pct ?? 0,
                           fat_pct: p!.diet_fat_pct ?? 0,
                         })
-                      : "Custom split (% or g/kg)"
+                      : t("diet.customDesc")
                     : pctLabel(opt.pct!);
                 return (
                   <Pressable
@@ -116,7 +118,7 @@ export default function GoalsScreen() {
                   >
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.presetLabel, active && styles.presetLabelActive]}>
-                        {opt.label}
+                        {t(`diet.${opt.value}`)}
                       </Text>
                       <Text style={styles.presetDesc}>{desc}</Text>
                     </View>
@@ -145,7 +147,7 @@ export default function GoalsScreen() {
             ) : null}
 
             {updateDiet.isError ? (
-              <Text style={styles.errorText}>Could not update. Try again.</Text>
+              <Text style={styles.errorText}>{t("goals.updateError")}</Text>
             ) : null}
           </View>
 
@@ -157,15 +159,10 @@ export default function GoalsScreen() {
           >
             <Pressable style={styles.infoBackdrop} onPress={() => setInfoOpen(false)}>
               <Pressable style={styles.infoCard} onPress={() => {}}>
-                <Text style={styles.infoTitle}>Daily caloric requirement</Text>
-                <Text style={styles.infoText}>
-                  The total calories you should eat per day to reach your goal. It starts from the
-                  energy you burn in a day (your maintenance, or TDEE) and adjusts it for your goal —
-                  a deficit to lose weight, a surplus to gain. Your macros below are split from this
-                  number.
-                </Text>
+                <Text style={styles.infoTitle}>{t("goals.dailyReq")}</Text>
+                <Text style={styles.infoText}>{t("goals.dailyReqInfo")}</Text>
                 <Pressable style={styles.infoBtn} onPress={() => setInfoOpen(false)}>
-                  <Text style={styles.infoBtnText}>Got it</Text>
+                  <Text style={styles.infoBtnText}>{t("common.gotIt")}</Text>
                 </Pressable>
               </Pressable>
             </Pressable>
@@ -178,10 +175,6 @@ export default function GoalsScreen() {
 }
 
 type CustomMode = "pct" | "gkg";
-const MODE_OPTIONS: { value: CustomMode; label: string }[] = [
-  { value: "pct", label: "Percent" },
-  { value: "gkg", label: "g per kg" },
-];
 
 /**
  * Editor della ripartizione custom dei macro, in due modi:
@@ -205,7 +198,12 @@ function CustomEditor({
   onApply: (pct: MacroPercentages) => void;
 }) {
   const { colors, styles } = useThemed(makeStyles);
+  const { t } = useI18n();
   const [mode, setMode] = useState<CustomMode>("pct");
+  const MODE_OPTIONS: { value: CustomMode; label: string }[] = [
+    { value: "pct", label: t("goals.percent") },
+    { value: "gkg", label: t("goals.gPerKg") },
+  ];
 
   // --- Percent ---
   const [carbs, setCarbs] = useState(String(initial.carbs_pct));
@@ -251,12 +249,12 @@ function CustomEditor({
       {mode === "pct" ? (
         <>
           <View style={styles.fieldRow}>
-            <NumberField label="Carbs %" value={carbs} onChangeText={setCarbs} unit="%" />
-            <NumberField label="Protein %" value={protein} onChangeText={setProtein} unit="%" />
-            <NumberField label="Fat %" value={fat} onChangeText={setFat} unit="%" />
+            <NumberField label={`${t("common.carbs")} %`} value={carbs} onChangeText={setCarbs} unit="%" />
+            <NumberField label={`${t("common.protein")} %`} value={protein} onChangeText={setProtein} unit="%" />
+            <NumberField label={`${t("common.fat")} %`} value={fat} onChangeText={setFat} unit="%" />
           </View>
           <Text style={[styles.sumText, !pctValid && styles.sumTextBad]}>
-            Total: {sum}% (must be 100%)
+            {t("goals.total", { sum })}
           </Text>
           <Pressable
             disabled={!pctValid || pending}
@@ -266,42 +264,43 @@ function CustomEditor({
             {pending ? (
               <ActivityIndicator color={colors.onPrimary} />
             ) : (
-              <Text style={styles.applyText}>Apply custom split</Text>
+              <Text style={styles.applyText}>{t("goals.applyCustom")}</Text>
             )}
           </Pressable>
         </>
       ) : (
         <>
           <Text style={styles.gkgHint}>
-            Set protein and fat per kg of body weight ({weightKg} kg). Carbs fill the rest of your{" "}
-            {targetCalories} kcal goal.
+            {t("goals.gkgHint", { weight: weightKg, kcal: targetCalories })}
           </Text>
           <View style={styles.fieldRow}>
             <NumberField
-              label="Protein"
+              label={t("common.protein")}
               value={proteinPerKg}
               onChangeText={setProteinPerKg}
               unit="g/kg"
-              placeholder="e.g. 2"
+              placeholder={t("common.eg", { v: 2 })}
             />
             <NumberField
-              label="Fat"
+              label={t("common.fat")}
               value={fatPerKg}
               onChangeText={setFatPerKg}
               unit="g/kg"
-              placeholder="e.g. 1"
+              placeholder={t("common.eg", { v: 1 })}
             />
           </View>
 
           {gkgOver ? (
             <Text style={styles.sumTextBad}>
-              Protein + fat already use {Math.round(pfKcal)} kcal, over your {targetCalories} kcal
-              goal. Lower them.
+              {t("goals.gkgOver", { used: Math.round(pfKcal), kcal: targetCalories })}
             </Text>
           ) : gkgValid ? (
             <Text style={styles.gkgPreview}>
-              Protein {Math.round(proteinG)} g · Carbs {Math.round(carbsG)} g · Fat{" "}
-              {Math.round(fatG)} g
+              {t("goals.gkgPreview", {
+                protein: Math.round(proteinG),
+                carbs: Math.round(carbsG),
+                fat: Math.round(fatG),
+              })}
             </Text>
           ) : null}
 
@@ -313,7 +312,7 @@ function CustomEditor({
             {pending ? (
               <ActivityIndicator color={colors.onPrimary} />
             ) : (
-              <Text style={styles.applyText}>Apply custom split</Text>
+              <Text style={styles.applyText}>{t("goals.applyCustom")}</Text>
             )}
           </Pressable>
         </>

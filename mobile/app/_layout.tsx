@@ -5,6 +5,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "../src/api/queryClient";
 import { ThemeProvider, useTheme } from "../src/theme/ThemeProvider";
+import { LanguageProvider } from "../src/i18n";
 
 /** Stack + StatusBar che seguono il tema attivo (consuma il context). */
 function ThemedStack() {
@@ -31,9 +32,11 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
-          <ThemeProvider>
-            <ThemedStack />
-          </ThemeProvider>
+          <LanguageProvider>
+            <ThemeProvider>
+              <ThemedStack />
+            </ThemeProvider>
+          </LanguageProvider>
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

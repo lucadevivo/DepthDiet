@@ -7,6 +7,7 @@ import { MacroDonut } from "../../src/components/MacroDonut";
 import { Icon } from "../../src/components/Icon";
 import { useThemed } from "../../src/theme/ThemeProvider";
 import type { ThemeColors } from "../../src/theme/colors";
+import { useI18n } from "../../src/i18n";
 import { todayISO } from "../../src/lib/date";
 import { useUpdateDiaryEntry } from "../../src/hooks/useDiary";
 import { useFoodQuery, useUpdateFood } from "../../src/hooks/useFoods";
@@ -33,6 +34,7 @@ function toInput(food: CustomFood, default_serving_g: number | null): CustomFood
  */
 export default function EditEntryScreen() {
   const { colors, styles } = useThemed(makeStyles);
+  const { t } = useI18n();
   const router = useRouter();
 
   const params = useLocalSearchParams<{
@@ -58,7 +60,7 @@ export default function EditEntryScreen() {
     carbs: Number.parseFloat(params.carbs_g ?? "0") || 0,
     fat: Number.parseFloat(params.fat_g ?? "0") || 0,
   };
-  const name = params.name ?? "Entry";
+  const name = params.name ?? t("comp.entry");
 
   const update = useUpdateDiaryEntry(date);
   // Solo le voci collegate a un Alimento Personale hanno una porzione predefinita.
@@ -102,7 +104,7 @@ export default function EditEntryScreen() {
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.lead}>Adjust the amount — the macros update with it.</Text>
+        <Text style={styles.lead}>{t("editEntry.lead")}</Text>
 
         <View style={styles.card}>
           <MacroDonut protein_g={macros.protein} carbs_g={macros.carbs} fat_g={macros.fat} />
@@ -110,16 +112,16 @@ export default function EditEntryScreen() {
 
         <View style={styles.card}>
           <View style={styles.row}>
-            <Text style={styles.rowLabel}>Calories</Text>
+            <Text style={styles.rowLabel}>{t("common.calories")}</Text>
             <Text style={styles.rowValue}>{Math.round(macros.kcal)} kcal</Text>
           </View>
           <View style={styles.sep} />
-          <MacroRow label="Protein" value={macros.protein} color={colors.protein} styles={styles} />
-          <MacroRow label="Carbs" value={macros.carbs} color={colors.carbs} styles={styles} />
-          <MacroRow label="Fat" value={macros.fat} color={colors.fat} styles={styles} />
+          <MacroRow label={t("common.protein")} value={macros.protein} color={colors.protein} styles={styles} />
+          <MacroRow label={t("common.carbs")} value={macros.carbs} color={colors.carbs} styles={styles} />
+          <MacroRow label={t("common.fat")} value={macros.fat} color={colors.fat} styles={styles} />
         </View>
 
-        <NumberField label="Grams" value={grams} onChangeText={setGrams} unit="g" />
+        <NumberField label={t("common.grams")} value={grams} onChangeText={setGrams} unit="g" />
 
         {/* Solo per le voci collegate a un Alimento: salva questa grammatura come
             porzione predefinita del cibo (come nel flusso "+ Add"). */}
@@ -132,8 +134,8 @@ export default function EditEntryScreen() {
             <Icon name={isDefault ? "check" : "weight"} size={18} color={colors.primary} />
             <Text style={styles.defaultText}>
               {isDefault
-                ? `Default portion: ${Math.round(g)} g`
-                : `Set ${validGrams ? Math.round(g) : "—"} g as default portion`}
+                ? t("portion.defaultIs", { g: Math.round(g) })
+                : t("portion.setDefault", { g: validGrams ? Math.round(g) : "—" })}
             </Text>
             {updateFood.isPending ? <ActivityIndicator color={colors.primary} /> : null}
           </Pressable>
@@ -147,10 +149,10 @@ export default function EditEntryScreen() {
           {update.isPending ? (
             <ActivityIndicator color={colors.onPrimary} />
           ) : (
-            <Text style={styles.saveText}>Save changes</Text>
+            <Text style={styles.saveText}>{t("common.saveChanges")}</Text>
           )}
         </Pressable>
-        {update.isError ? <Text style={styles.error}>Something went wrong. Try again.</Text> : null}
+        {update.isError ? <Text style={styles.error}>{t("common.genericError")}</Text> : null}
       </ScrollView>
     </View>
   );

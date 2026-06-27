@@ -14,6 +14,7 @@ import { SegmentedControl } from "../../src/components/SegmentedControl";
 import { Icon } from "../../src/components/Icon";
 import { useTheme, useThemed } from "../../src/theme/ThemeProvider";
 import type { ThemeColors } from "../../src/theme/colors";
+import { useI18n } from "../../src/i18n";
 import { todayISO } from "../../src/lib/date";
 import { useAddDiaryEntry } from "../../src/hooks/useDiary";
 import { useMealsQuery } from "../../src/hooks/useMeals";
@@ -24,13 +25,9 @@ import type { CustomFood, RecipeSummary } from "../../src/types/food";
 // Solo voci dal database: Alimenti o Ricette (niente più inserimento manuale).
 type Mode = "custom_food" | "recipe";
 
-const MODE_OPTIONS: { value: Mode; label: string }[] = [
-  { value: "custom_food", label: "Food" },
-  { value: "recipe", label: "Recipe" },
-];
-
 export default function AddDiaryScreen() {
   const { colors, styles } = useThemed(makeStyles);
+  const { t } = useI18n();
   const router = useRouter();
 
   // Pasto e data arrivano dalla MealCard del Diario: il pasto è FISSO (la sezione
@@ -51,6 +48,11 @@ export default function AddDiaryScreen() {
   }, [meals.data, mealId]);
 
   const mealName = (meals.data ?? []).find((m) => m.id === mealId)?.name ?? "—";
+
+  const MODE_OPTIONS: { value: Mode; label: string }[] = [
+    { value: "custom_food", label: t("add.modeFood") },
+    { value: "recipe", label: t("add.modeRecipe") },
+  ];
 
   const [mode, setMode] = useState<Mode>("custom_food");
 
@@ -73,7 +75,7 @@ export default function AddDiaryScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader title={`Add to ${mealName}`} />
+      <ScreenHeader title={t("add.addTo", { meal: mealName })} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {/* Scorciatoia: fotografa il pasto invece di inserirlo a mano. */}
         <Pressable
@@ -81,7 +83,17 @@ export default function AddDiaryScreen() {
           onPress={() => router.push(`/analyze?meal_id=${mealId ?? ""}&date=${date}`)}
         >
           <Icon name="scan" size={20} color={colors.primary} />
-          <Text style={styles.scanText}>Scan a meal with the camera</Text>
+          <Text style={styles.scanText}>{t("add.scanMeal")}</Text>
+          <Icon name="chevron" size={18} color={colors.textMuted} />
+        </Pressable>
+
+        {/* #5 — Crea un cibo nuovo (le 3 opzioni della libreria, salvabile o no). */}
+        <Pressable
+          style={styles.scanBtn}
+          onPress={() => router.push(`/diary/new-food?meal_id=${mealId ?? ""}&date=${date}`)}
+        >
+          <Icon name="add" size={20} color={colors.primary} />
+          <Text style={styles.scanText}>{t("newFood.button")}</Text>
           <Icon name="chevron" size={18} color={colors.textMuted} />
         </Pressable>
 
@@ -91,7 +103,7 @@ export default function AddDiaryScreen() {
           <>
             <TextInput
               style={styles.input}
-              placeholder="Search a food..."
+              placeholder={t("add.searchFood")}
               placeholderTextColor={colors.textMuted}
               value={search}
               onChangeText={setSearch}
@@ -112,7 +124,7 @@ export default function AddDiaryScreen() {
               selectedId={recipeId}
               onSelect={setRecipeId}
               render={(r: RecipeSummary) => `${r.name}  ·  ${r.totals.kcal} kcal`}
-              emptyText="No recipes yet. Create one from the Recipes screen."
+              emptyText={t("add.noRecipes")}
             />
             <Pressable
               onPress={onAddRecipe}
@@ -125,11 +137,11 @@ export default function AddDiaryScreen() {
               {add.isPending ? (
                 <ActivityIndicator color={colors.onPrimary} />
               ) : (
-                <Text style={styles.saveText}>Add</Text>
+                <Text style={styles.saveText}>{t("common.add")}</Text>
               )}
             </Pressable>
             {add.isError ? (
-              <Text style={styles.error}>Something went wrong. Try again.</Text>
+              <Text style={styles.error}>{t("common.genericError")}</Text>
             ) : null}
           </>
         )}
@@ -157,8 +169,9 @@ function PickList<T extends { id: number }>({
   emptyText,
 }: PickListProps<T>) {
   const { colors, styles } = useThemed(makeStyles);
+  const { t } = useI18n();
   if (loading) return <ActivityIndicator color={colors.primary} style={{ marginVertical: 12 }} />;
-  if (error) return <Text style={styles.error}>Failed to load.</Text>;
+  if (error) return <Text style={styles.error}>{t("add.failedLoad")}</Text>;
   if (items.length === 0) return <Text style={styles.empty}>{emptyText}</Text>;
   return (
     <View style={{ gap: 8 }}>
@@ -191,10 +204,11 @@ function FoodList({
   onSelect: (id: number) => void;
 }) {
   const { colors, styles } = useThemed(makeStyles);
+  const { t } = useI18n();
   if (loading) return <ActivityIndicator color={colors.primary} style={{ marginVertical: 12 }} />;
-  if (error) return <Text style={styles.error}>Failed to load.</Text>;
+  if (error) return <Text style={styles.error}>{t("add.failedLoad")}</Text>;
   if (items.length === 0)
-    return <Text style={styles.empty}>No foods yet. Create one from the Foods screen.</Text>;
+    return <Text style={styles.empty}>{t("add.noFoods")}</Text>;
   return (
     <View style={{ gap: 8 }}>
       {items.map((food) => {

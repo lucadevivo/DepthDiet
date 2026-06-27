@@ -1,5 +1,6 @@
 import type { CustomFood } from "../../repositories/customFoods.js";
 import type { AnalyzeInput, DepthQuality, ReferenceType } from "./types.js";
+import { languageName, parseLang } from "./lang.js";
 
 /** Descrizione (con dimensioni reali) degli oggetti di riferimento, per il prompt. */
 const REFERENCE_LABEL: Record<ReferenceType, string> = {
@@ -27,10 +28,12 @@ export function buildMealPrompt(
   library: CustomFood[] = [],
 ): string {
   const lines: string[] = [];
+  const respondIn = languageName(parseLang(input.lang));
 
   lines.push(
     "Sei un nutrizionista. Analizza la foto del pasto e stima gli alimenti presenti,",
-    "le quantità in grammi e i macronutrienti. Rispondi in italiano.",
+    `le quantità in grammi e i macronutrienti. Rispondi in ${respondIn} (nomi degli`,
+    "alimenti e note compresi).",
     "",
     "Regole:",
     "- Scomponi il pasto nei singoli alimenti riconoscibili.",

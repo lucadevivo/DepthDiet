@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Modal,
   StyleSheet,
   useWindowDimensions,
 } from "react-native";
@@ -21,6 +22,7 @@ import { NumberField } from "../src/components/NumberField";
 import { Icon } from "../src/components/Icon";
 import { useThemed } from "../src/theme/ThemeProvider";
 import type { ThemeColors } from "../src/theme/colors";
+import { useI18n } from "../src/i18n";
 import { todayISO } from "../src/lib/date";
 import { useAnalyzeMeal } from "../src/hooks/useAnalyzeMeal";
 import { useAddDiaryEntry } from "../src/hooks/useDiary";
@@ -125,8 +127,11 @@ function toEditItems(result: AnalyzeResult): EditItem[] {
 
 export default function AnalyzeScreen() {
   const { colors, styles } = useThemed(makeStyles);
+  const { t, lang } = useI18n();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  // Box informativo "scrivi 'libreria' nel prompt per abbinare ai tuoi cibi" (#6).
+  const [showLibInfo, setShowLibInfo] = useState(false);
   // Larghezza di una pagina del carosello foto (schermo meno il padding del contenuto).
   const { width: winW } = useWindowDimensions();
   const photoW = winW - 32;
@@ -219,7 +224,7 @@ export default function AnalyzeScreen() {
     if (!permission?.granted) {
       const res = await requestPermission();
       if (!res.granted) {
-        setError("Camera permission needed. Enable it in Settings.");
+        setError(t("scan.errCamera"));
         return;
       }
     }
@@ -241,7 +246,7 @@ export default function AnalyzeScreen() {
     if (!permission?.granted) {
       const res = await requestPermission();
       if (!res.granted) {
-        setError("Camera permission needed. Enable it in Settings.");
+        setError(t("scan.errCamera"));
         return;
       }
     }
@@ -261,7 +266,7 @@ export default function AnalyzeScreen() {
       });
     } catch (e) {
       if (e instanceof ImagePickCancelled) return;
-      setError("Couldn't load the image. Try again.");
+      setError(t("scan.errImage"));
     }
   };
 
@@ -282,7 +287,7 @@ export default function AnalyzeScreen() {
       else setPrimaryShot(shot);
       setPhase("captured");
     } catch {
-      setError("Couldn't take the photo. Try again.");
+      setError(t("scan.errPhoto"));
     } finally {
       setCapturing(false);
     }
@@ -310,7 +315,7 @@ export default function AnalyzeScreen() {
       setPhase("captured");
     } catch (e) {
       if (e instanceof LidarCancelled) return; // annullato dall'utente: nessun errore
-      setError("LiDAR capture failed. Use the normal camera instead.");
+      setError(t("scan.errLidar"));
     }
   };
 
@@ -328,10 +333,10 @@ export default function AnalyzeScreen() {
     } catch (e) {
       if (e instanceof ImagePickCancelled) {
         if (e.reason === "permission_denied")
-          setError("Gallery permission needed. Enable it in Settings.");
+          setError(t("scan.errGallery"));
         return;
       }
-      setError("Couldn't load the image. Try again.");
+      setError(t("scan.errImage"));
     }
   };
 
@@ -349,6 +354,7 @@ export default function AnalyzeScreen() {
         imageBase64: primary.base64,
         mimeType: primary.mimeType,
         contextText: contextText.trim() || undefined,
+        lang,
         depth: primary.depth ?? undefined,
         extraImages:
           extras.length > 0
@@ -361,14 +367,14 @@ export default function AnalyzeScreen() {
       };
       const result = await analyze.mutateAsync(body);
       if (result.items.length === 0) {
-        setError("No food recognized. Try a sharper photo or add some context.");
+        setError(t("scan.errNoFood"));
         return;
       }
       setItems(toEditItems(result));
       setNotes(result.notes);
       setPhase("review");
     } catch {
-      setError("Analysis failed. Check your connection and try again.");
+      setError(t("scan.errAnalysis"));
     }
   };
 
@@ -390,7 +396,7 @@ export default function AnalyzeScreen() {
       });
       patch(item.key, { foodId: food.id, savedAsFood: true });
     } catch {
-      setError("Could not save the food. Try again.");
+      setError(t("scan.errSaveFood"));
     } finally {
       setSavingKey(null);
     }
@@ -416,9 +422,32 @@ export default function AnalyzeScreen() {
       }
       router.back();
     } catch {
-      setError("Could not save to the diary. Some entries may not have been added.");
+      setError(t("scan.errSaveDiary"));
     }
   };
+
+  // #6 — Banner + modale che spiega l'abbinamento alla libreria (scrivi "library"
+  // nel prompt). renderLibInfo* sono funzioni, non componenti, per evitare remount.
+  const renderLibInfoCard = () => (
+    <Pressable style={styles.libInfo} onPress={() => setShowLibInfo(true)}>
+      <Icon name="bulb" size={16} color={colors.primary} />
+      <Text style={styles.libInfoText}>{t("scan.libraryInfo.title")}</Text>
+      <Icon name="chevron" size={16} color={colors.textMuted} />
+    </Pressable>
+  );
+  const renderLibInfoModal = () => (
+    <Modal visible={showLibInfo} transparent animationType="fade" onRequestClose={() => setShowLibInfo(false)}>
+      <Pressable style={styles.infoBackdrop} onPress={() => setShowLibInfo(false)}>
+        <Pressable style={styles.infoCard} onPress={() => {}}>
+          <Text style={styles.infoTitle}>{t("scan.libraryInfo.title")}</Text>
+          <Text style={styles.infoText}>{t("scan.libraryInfo.body")}</Text>
+          <Pressable style={styles.infoOkBtn} onPress={() => setShowLibInfo(false)}>
+            <Text style={styles.infoOkText}>{t("common.gotIt")}</Text>
+          </Pressable>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
 
   // === FASE: fotocamera interna (a tutto schermo, coerente col tema) ===
   if (phase === "camera") {
@@ -450,7 +479,7 @@ export default function AnalyzeScreen() {
             <Icon name="close" size={26} color="#fff" />
           </Pressable>
           <Text style={styles.cameraTitle}>
-            {cameraMode === "extra" ? "Add a view" : mealName}
+            {cameraMode === "extra" ? t("scan.addView") : mealName}
           </Text>
           <View style={{ width: 26 }} />
         </View>
@@ -499,14 +528,14 @@ export default function AnalyzeScreen() {
         style={styles.screen}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <ScreenHeader title="Scan meal" />
+        <ScreenHeader title={t("scan.title")} />
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
           automaticallyAdjustKeyboardInsets
         >
-          <Text style={styles.label}>Meal: {mealName}</Text>
+          <Text style={styles.label}>{t("scan.meal", { name: mealName })}</Text>
 
           {/* Carosello foto: principale + viste aggiuntive una accanto all'altra.
               Scorri per vederle; ognuna ha la X per rimuoverla e il badge LiDAR se
@@ -530,7 +559,7 @@ export default function AnalyzeScreen() {
                     />
                     {i === 0 ? (
                       <View style={styles.mainTag}>
-                        <Text style={styles.mainTagText}>Main</Text>
+                        <Text style={styles.mainTagText}>{t("scan.mainTag")}</Text>
                       </View>
                     ) : null}
                     {shot.depth ? (
@@ -563,56 +592,54 @@ export default function AnalyzeScreen() {
 
           {/* Viste aggiuntive: altre angolazioni dello STESSO pasto, per dare più
               contesto a Gemini. Non vengono conteggiate doppie (lo dice il prompt). */}
-          <Text style={styles.label}>Add to context (optional)</Text>
-          <Text style={styles.hintSmall}>
-            Add other angles of the same meal to help the AI. They won't be double-counted.
-          </Text>
+          <Text style={styles.label}>{t("scan.addContext")}</Text>
+          <Text style={styles.hintSmall}>{t("scan.addContextHint")}</Text>
           {photos.length < MAX_PHOTOS ? (
             <View style={styles.addRow}>
               <Pressable style={styles.addBtn} onPress={addExtraFromCamera}>
                 <Icon name="camera" size={16} color={colors.text} />
-                <Text style={styles.addBtnText}>Camera</Text>
+                <Text style={styles.addBtnText}>{t("scan.camera")}</Text>
               </Pressable>
               <Pressable style={styles.addBtn} onPress={addExtraFromGallery}>
                 <Icon name="gallery" size={16} color={colors.text} />
-                <Text style={styles.addBtnText}>Gallery</Text>
+                <Text style={styles.addBtnText}>{t("scan.gallery")}</Text>
               </Pressable>
             </View>
           ) : null}
 
-          <Text style={styles.label}>Prompt (optional)</Text>
+          <Text style={styles.label}>{t("scan.promptLabel")}</Text>
+          {renderLibInfoCard()}
           <TextInput
             style={styles.input}
-            placeholder="E.g. there are 30g of parmesan underneath, or 'this is a large portion'"
+            placeholder={t("scan.promptPlaceholder")}
             placeholderTextColor={colors.textMuted}
             value={contextText}
             onChangeText={setContextText}
             multiline
           />
-          <Text style={styles.hintSmall}>
-            Add a note only if useful — then send. The photo is not sent until you tap Analyze.
-          </Text>
+          <Text style={styles.hintSmall}>{t("scan.promptHint")}</Text>
 
           {analyze.isPending ? (
             <View style={styles.busy}>
               <ActivityIndicator color={colors.primary} />
-              <Text style={styles.busyText}>Analyzing…</Text>
+              <Text style={styles.busyText}>{t("scan.analyzing")}</Text>
             </View>
           ) : (
             <View style={{ gap: 10, marginTop: 8 }}>
               <Pressable style={styles.primaryBtn} onPress={runAnalysis}>
                 <Icon name="scan" size={20} color={colors.onPrimary} />
-                <Text style={styles.primaryText}>Analyze</Text>
+                <Text style={styles.primaryText}>{t("scan.analyze")}</Text>
               </Pressable>
               <Pressable style={styles.secondaryBtn} onPress={openCamera}>
                 <Icon name="camera" size={18} color={colors.text} />
-                <Text style={styles.secondaryText}>Retake photo</Text>
+                <Text style={styles.secondaryText}>{t("scan.retake")}</Text>
               </Pressable>
             </View>
           )}
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
         </ScrollView>
+        {renderLibInfoModal()}
       </KeyboardAvoidingView>
     );
   }
@@ -621,31 +648,31 @@ export default function AnalyzeScreen() {
   if (phase === "pick") {
     return (
       <View style={styles.screen}>
-        <ScreenHeader title="Scan meal" />
+        <ScreenHeader title={t("scan.title")} />
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <Text style={styles.lead}>
-            Photograph the plate: the AI estimates the foods and matches them to your Foods. You can
-            add a prompt before sending.
-            {lidarAvailable
-              ? " On this device the food volume is also measured automatically with LiDAR for a better portion estimate."
-              : ""}
+            {t("scan.pickLead")}
+            {lidarAvailable ? t("scan.lidarNote") : ""}
           </Text>
 
-          <Text style={styles.label}>Meal: {mealName}</Text>
+          <Text style={styles.label}>{t("scan.meal", { name: mealName })}</Text>
+
+          {renderLibInfoCard()}
 
           <View style={{ gap: 10, marginTop: 8 }}>
             <Pressable style={styles.primaryBtn} onPress={openCamera}>
               <Icon name="camera" size={20} color={colors.onPrimary} />
-              <Text style={styles.primaryText}>Open camera</Text>
+              <Text style={styles.primaryText}>{t("scan.openCamera")}</Text>
             </Pressable>
             <Pressable style={styles.secondaryBtn} onPress={pickFromGallery}>
               <Icon name="gallery" size={18} color={colors.text} />
-              <Text style={styles.secondaryText}>Choose from gallery</Text>
+              <Text style={styles.secondaryText}>{t("scan.chooseGallery")}</Text>
             </Pressable>
           </View>
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
         </ScrollView>
+        {renderLibInfoModal()}
       </View>
     );
   }
@@ -668,11 +695,10 @@ export default function AnalyzeScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader title="Confirm meal" />
+      <ScreenHeader title={t("scan.confirmTitle")} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Text style={styles.lead}>
-          Check the matches and amounts, then add to the diary (
-          {meals.data?.find((m) => m.id === mealId)?.name ?? "—"}).
+          {t("scan.confirmLead", { meal: meals.data?.find((m) => m.id === mealId)?.name ?? "—" })}
         </Text>
         {notes ? (
           <View style={styles.notesRow}>
@@ -696,11 +722,11 @@ export default function AnalyzeScreen() {
                   <Text style={styles.name}>{it.name}</Text>
                   {it.foodId != null ? (
                     <Text style={styles.matched}>
-                      {it.savedAsFood ? "✓ saved as Food" : "✓ matched to one of your Foods"}
+                      {it.savedAsFood ? t("scan.savedAsFood") : t("scan.matched")}
                     </Text>
                   ) : (
                     <Text style={styles.estimated}>
-                      AI estimate · {Math.round(it.confidence * 100)}% confidence
+                      {t("scan.aiEstimate", { pct: Math.round(it.confidence * 100) })}
                     </Text>
                   )}
                 </View>
@@ -708,9 +734,9 @@ export default function AnalyzeScreen() {
 
               <View style={styles.cardBody}>
                 <NumberField
-                  label="Grams"
+                  label={t("common.grams")}
                   value={it.gramsStr}
-                  onChangeText={(t) => patch(it.key, { gramsStr: t })}
+                  onChangeText={(tx) => patch(it.key, { gramsStr: tx })}
                   unit="g"
                 />
                 <Text style={styles.macros}>
@@ -729,7 +755,7 @@ export default function AnalyzeScreen() {
                   ) : (
                     <>
                       <Icon name="add" size={18} color={colors.primary} />
-                      <Text style={styles.saveFoodText}>Save as Food</Text>
+                      <Text style={styles.saveFoodText}>{t("scan.saveAsFood")}</Text>
                     </>
                   )}
                 </Pressable>
@@ -739,7 +765,7 @@ export default function AnalyzeScreen() {
         })}
 
         <View style={styles.totalCard}>
-          <Text style={styles.totalLabel}>Selected total</Text>
+          <Text style={styles.totalLabel}>{t("scan.selectedTotal")}</Text>
           <Text style={styles.totalKcal}>{total.kcal} kcal</Text>
           <Text style={styles.totalMacros}>
             P {round(total.protein_g, 1)} · C {round(total.carbs_g, 1)} · F {round(total.fat_g, 1)}
@@ -754,12 +780,12 @@ export default function AnalyzeScreen() {
           {addEntry.isPending ? (
             <ActivityIndicator color={colors.onPrimary} />
           ) : (
-            <Text style={styles.primaryText}>Add to diary</Text>
+            <Text style={styles.primaryText}>{t("scan.addToDiary")}</Text>
           )}
         </Pressable>
         <Pressable style={styles.secondaryBtn} onPress={() => setPhase("captured")}>
           <Icon name="back" size={18} color={colors.text} />
-          <Text style={styles.secondaryText}>Back to photo</Text>
+          <Text style={styles.secondaryText}>{t("scan.backToPhoto")}</Text>
         </Pressable>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -968,6 +994,46 @@ const makeStyles = (colors: ThemeColors) =>
       borderColor: colors.border,
     },
     saveFoodText: { color: colors.primary, fontSize: 14, fontWeight: "700" },
+
+    // #6 — Banner informativo abbinamento libreria + modale
+    libInfo: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      backgroundColor: colors.primary + "14",
+      borderRadius: 12,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      borderWidth: 1,
+      borderColor: colors.primary + "33",
+    },
+    libInfoText: { flex: 1, color: colors.text, fontSize: 13, fontWeight: "700" },
+    infoBackdrop: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.5)",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 28,
+    },
+    infoCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 18,
+      padding: 20,
+      gap: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      width: "100%",
+    },
+    infoTitle: { color: colors.text, fontSize: 18, fontWeight: "800" },
+    infoText: { color: colors.textMuted, fontSize: 14, lineHeight: 20 },
+    infoOkBtn: {
+      backgroundColor: colors.primary,
+      borderRadius: 12,
+      paddingVertical: 12,
+      alignItems: "center",
+      marginTop: 4,
+    },
+    infoOkText: { color: colors.onPrimary, fontSize: 15, fontWeight: "800" },
     totalCard: {
       backgroundColor: colors.surfaceAlt,
       borderRadius: 14,

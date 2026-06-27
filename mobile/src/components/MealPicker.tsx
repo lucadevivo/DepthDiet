@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { ScrollView, Text, Pressable, ActivityIndicator, StyleSheet } from "react-native";
 import { useTheme, useThemed } from "../theme/ThemeProvider";
 import type { ThemeColors } from "../theme/colors";
+import { useI18n } from "../i18n";
 import type { Meal } from "../types/meals";
 
 interface Props {
@@ -18,6 +19,7 @@ interface Props {
  */
 export function MealPicker({ meals, loading, value, onChange }: Props) {
   const { colors, styles } = useThemed(makeStyles);
+  const { t } = useI18n();
   const valid = value != null && meals.some((m) => m.id === value);
 
   useEffect(() => {
@@ -26,7 +28,7 @@ export function MealPicker({ meals, loading, value, onChange }: Props) {
 
   if (loading) return <ActivityIndicator color={colors.primary} style={{ marginVertical: 8 }} />;
   if (meals.length === 0) {
-    return <Text style={styles.empty}>No meals. Create one from Profile → Meals.</Text>;
+    return <Text style={styles.empty}>{t("comp.noMeals")}</Text>;
   }
 
   return (

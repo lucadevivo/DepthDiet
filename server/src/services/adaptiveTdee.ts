@@ -27,6 +27,9 @@ const MIN_SPAN_DAYS = 10; // distribuite su almeno ~1.5 settimane
 const MAX_ADJUST = 400; // non stravolgere l'obiettivo in un colpo
 const MIN_ADJUST = 50; // sotto questa soglia, nessun cambiamento
 
+/** Codice del motivo (l'app lo traduce con i parametri; vedi i18n adaptive.*). */
+export type AdaptiveReasonCode = "needData" | "needGoal" | "onTrack" | "adjustUp" | "adjustDown";
+
 export interface AdaptiveSuggestion {
   hasEnoughData: boolean;
   dataPoints: number;
@@ -36,7 +39,11 @@ export interface AdaptiveSuggestion {
   currentTargetCalories: number | null;
   suggestedTargetCalories: number | null;
   adjustmentKcal: number;
+  /** Testo già composto (italiano) — fallback/diagnostica; l'app usa reasonCode. */
   reason: string;
+  /** Motivo strutturato, tradotto lato app. */
+  reasonCode: AdaptiveReasonCode;
+  reasonParams: { trend?: number; expected?: number; amount?: number; suggested?: number };
 }
 
 /** Pendenza ai minimi quadrati (kg per giorno). */
@@ -80,6 +87,8 @@ export function computeAdaptive(
     suggestedTargetCalories: currentTargetCalories,
     adjustmentKcal: 0,
     reason: "Servono almeno 3 pesate su ~2 settimane per stimare il trend.",
+    reasonCode: "needData",
+    reasonParams: {},
   };
 
   if (recent.length < MIN_POINTS) return base;
@@ -107,6 +116,8 @@ export function computeAdaptive(
         currentTargetCalories == null
           ? "Imposta prima gli obiettivi nel Calcolatore."
           : `Trend ${base.trendKgPerWeek} kg/sett, in linea con l'obiettivo: nessuna modifica.`,
+      reasonCode: currentTargetCalories == null ? "needGoal" : "onTrack",
+      reasonParams: currentTargetCalories == null ? {} : { trend: base.trendKgPerWeek ?? 0 },
     };
   }
 
@@ -119,5 +130,7 @@ export function computeAdaptive(
     reason:
       `Trend reale ${base.trendKgPerWeek} kg/sett vs atteso ${expected} kg/sett: ` +
       `consiglio di ${direction} di ${Math.abs(adjust)} kcal/giorno (→ ${suggested} kcal).`,
+    reasonCode: adjust < 0 ? "adjustDown" : "adjustUp",
+    reasonParams: { trend: base.trendKgPerWeek ?? 0, expected, amount: Math.abs(adjust), suggested },
   };
 }

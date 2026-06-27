@@ -12,6 +12,7 @@ import { NumberField } from "../src/components/NumberField";
 import { Sparkline } from "../src/components/Sparkline";
 import { useTheme, useThemed } from "../src/theme/ThemeProvider";
 import type { ThemeColors } from "../src/theme/colors";
+import { useI18n } from "../src/i18n";
 import { todayISO } from "../src/lib/date";
 import {
   useAdaptiveQuery,
@@ -23,6 +24,7 @@ import {
 
 export default function WeightScreen() {
   const { colors, styles } = useThemed(makeStyles);
+  const { t } = useI18n();
   const weights = useWeightsQuery();
   const adaptive = useAdaptiveQuery();
   const logWeight = useLogWeight();
@@ -43,13 +45,13 @@ export default function WeightScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader title="Weight" />
+      <ScreenHeader title={t("weight.title")} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {/* Registrazione */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Log today's weight</Text>
+          <Text style={styles.cardTitle}>{t("weight.logToday")}</Text>
           <View style={styles.logRow}>
-            <NumberField label="Weight" value={w} onChangeText={setW} unit="kg" />
+            <NumberField label={t("common.weight")} value={w} onChangeText={setW} unit="kg" />
             <Pressable
               onPress={onLog}
               disabled={!valid || logWeight.isPending}
@@ -58,7 +60,7 @@ export default function WeightScreen() {
               {logWeight.isPending ? (
                 <ActivityIndicator color={colors.onPrimary} />
               ) : (
-                <Text style={styles.btnText}>Log</Text>
+                <Text style={styles.btnText}>{t("weight.log")}</Text>
               )}
             </Pressable>
           </View>
@@ -76,7 +78,7 @@ export default function WeightScreen() {
 
         {/* Trend */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Trend</Text>
+          <Text style={styles.cardTitle}>{t("weight.trend")}</Text>
           {weights.isLoading ? (
             <ActivityIndicator color={colors.primary} />
           ) : (
@@ -85,9 +87,9 @@ export default function WeightScreen() {
         </View>
 
         {/* Storico misure */}
-        <Text style={styles.listTitle}>Measurements</Text>
+        <Text style={styles.listTitle}>{t("weight.measurements")}</Text>
         {recent.length === 0 ? (
-          <Text style={styles.empty}>No measurements yet.</Text>
+          <Text style={styles.empty}>{t("weight.noMeasurements")}</Text>
         ) : (
           recent.map((entry) => (
             <View key={entry.id} style={styles.row}>
@@ -120,33 +122,34 @@ function AdaptiveCard({
   applied: number | null;
 }) {
   const { colors, styles } = useThemed(makeStyles);
+  const { t } = useI18n();
   return (
     <View style={[styles.card, styles.adaptiveCard]}>
-      <Text style={styles.cardTitle}>Adaptive TDEE</Text>
+      <Text style={styles.cardTitle}>{t("metric.adaptiveTdee")}</Text>
       {loading ? (
         <ActivityIndicator color={colors.primary} />
       ) : error ? (
-        <Text style={styles.errorText}>Imposta gli obiettivi nel Calcolatore per il Adaptive TDEE.</Text>
+        <Text style={styles.errorText}>{t("weight.adaptiveError")}</Text>
       ) : data ? (
         <>
           <View style={styles.trendRow}>
-            <Trend label="Actual trend" value={data.trendKgPerWeek != null ? `${data.trendKgPerWeek} kg/week` : "—"} />
-            <Trend label="Expected" value={`${data.expectedKgPerWeek} kg/week`} />
+            <Trend label={t("weight.actualTrend")} value={data.trendKgPerWeek != null ? t("metric.kgPerWeek", { v: data.trendKgPerWeek }) : "—"} />
+            <Trend label={t("weight.expected")} value={t("metric.kgPerWeek", { v: data.expectedKgPerWeek })} />
           </View>
-          <Text style={styles.reason}>{data.reason}</Text>
+          <Text style={styles.reason}>{t(`adaptive.${data.reasonCode}`, data.reasonParams)}</Text>
           {data.hasEnoughData && data.adjustmentKcal !== 0 ? (
             <Pressable onPress={onApply} disabled={applying} style={[styles.applyBtn, applying && styles.disabled]}>
               {applying ? (
                 <ActivityIndicator color={colors.onPrimary} />
               ) : (
                 <Text style={styles.applyText}>
-                  Apply → {data.suggestedTargetCalories} kcal
+                  {t("weight.apply", { kcal: data.suggestedTargetCalories ?? 0 })}
                 </Text>
               )}
             </Pressable>
           ) : null}
           {applied != null ? (
-            <Text style={styles.success}>Goal updated ({applied > 0 ? "+" : ""}{applied} kcal).</Text>
+            <Text style={styles.success}>{t("weight.goalUpdated", { sign: applied > 0 ? "+" : "", kcal: applied })}</Text>
           ) : null}
         </>
       ) : null}

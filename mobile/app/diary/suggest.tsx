@@ -16,16 +16,13 @@ import { SegmentedControl } from "../../src/components/SegmentedControl";
 import { Icon } from "../../src/components/Icon";
 import { useThemed } from "../../src/theme/ThemeProvider";
 import type { ThemeColors } from "../../src/theme/colors";
+import { useI18n } from "../../src/i18n";
 import { todayISO } from "../../src/lib/date";
 import { useSuggestMeal } from "../../src/hooks/useSuggest";
 import { ApiError } from "../../src/api/client";
 import type { MealSuggestion } from "../../src/types/suggest";
 
 type Scope = "library" | "any";
-const SCOPE_OPTIONS: { value: Scope; label: string }[] = [
-  { value: "library", label: "My foods only" },
-  { value: "any", label: "Anything" },
-];
 
 /**
  * Suggeritore IA: calcola i macro mancanti del giorno e propone cosa mangiare.
@@ -34,9 +31,15 @@ const SCOPE_OPTIONS: { value: Scope; label: string }[] = [
  */
 export default function SuggestScreen() {
   const { colors, styles } = useThemed(makeStyles);
+  const { t, lang } = useI18n();
   const params = useLocalSearchParams<{ date?: string }>();
   const date =
     params.date && /^\d{4}-\d{2}-\d{2}$/.test(params.date) ? params.date : todayISO();
+
+  const SCOPE_OPTIONS: { value: Scope; label: string }[] = [
+    { value: "library", label: t("suggest.scopeLibrary") },
+    { value: "any", label: t("suggest.scopeAny") },
+  ];
 
   const [scope, setScope] = useState<Scope>("library");
   const [note, setNote] = useState("");
@@ -47,6 +50,7 @@ export default function SuggestScreen() {
       date,
       onlyLibrary: scope === "library",
       note: note.trim() || undefined,
+      lang,
     });
 
   const result = suggest.data;
@@ -58,25 +62,22 @@ export default function SuggestScreen() {
       style={styles.screen}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <ScreenHeader title="What to eat" />
+      <ScreenHeader title={t("suggest.title")} />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
       >
-        <Text style={styles.lead}>
-          Get an AI suggestion to reach today's goal. Choose whether it should stick to your saved
-          Foods and Recipes, or range over any food.
-        </Text>
+        <Text style={styles.lead}>{t("suggest.lead")}</Text>
 
-        <Text style={styles.fieldLabel}>Suggest from</Text>
+        <Text style={styles.fieldLabel}>{t("suggest.from")}</Text>
         <SegmentedControl options={SCOPE_OPTIONS} value={scope} onChange={setScope} />
 
-        <Text style={styles.fieldLabel}>Anything specific? (optional)</Text>
+        <Text style={styles.fieldLabel}>{t("suggest.noteLabel")}</Text>
         <TextInput
           style={styles.input}
-          placeholder="e.g. I'm craving something sweet · I'm at a bar · I want a protein shake"
+          placeholder={t("suggest.notePlaceholder")}
           placeholderTextColor={colors.textMuted}
           value={note}
           onChangeText={setNote}
@@ -93,14 +94,14 @@ export default function SuggestScreen() {
           ) : (
             <>
               <Icon name="bulb" size={20} color={colors.onPrimary} />
-              <Text style={styles.runText}>{result ? "Suggest again" : "Get a suggestion"}</Text>
+              <Text style={styles.runText}>{result ? t("suggest.ctaAgain") : t("suggest.cta")}</Text>
             </>
           )}
         </Pressable>
 
         {result ? (
           <View style={styles.remainingCard}>
-            <Text style={styles.remainingLabel}>Left to reach your goal</Text>
+            <Text style={styles.remainingLabel}>{t("suggest.leftToGoal")}</Text>
             <Text style={styles.remainingKcal}>{Math.round(result.remaining.kcal)} kcal</Text>
             <Text style={styles.remainingMacros}>
               P {Math.round(result.remaining.protein_g)} · C {Math.round(result.remaining.carbs_g)} ·
@@ -117,23 +118,19 @@ export default function SuggestScreen() {
         ) : null}
 
         {result?.suggestions.map((s, i) => (
-          <SuggestionCard key={`${i}-${s.name}`} s={s} styles={styles} colors={colors} />
+          <SuggestionCard key={`${i}-${s.name}`} s={s} styles={styles} colors={colors} fromLibraryLabel={t("suggest.fromLibrary")} />
         ))}
 
         {result && result.suggestions.length === 0 && !result.notes ? (
-          <Text style={styles.empty}>No suggestion this time. Try again or widen the scope.</Text>
+          <Text style={styles.empty}>{t("suggest.empty")}</Text>
         ) : null}
 
         {notConfigured ? (
-          <Text style={styles.error}>
-            The AI suggester isn't configured on the server (missing Gemini key).
-          </Text>
+          <Text style={styles.error}>{t("suggest.errNotConfigured")}</Text>
         ) : rateLimited ? (
-          <Text style={styles.error}>
-            The AI is busy right now (rate limit). Wait a few seconds and try again.
-          </Text>
+          <Text style={styles.error}>{t("suggest.errRateLimited")}</Text>
         ) : suggest.isError ? (
-          <Text style={styles.error}>Couldn't get a suggestion. Check your connection and try again.</Text>
+          <Text style={styles.error}>{t("suggest.errGeneric")}</Text>
         ) : null}
       </ScrollView>
     </KeyboardAvoidingView>
@@ -144,10 +141,12 @@ function SuggestionCard({
   s,
   styles,
   colors,
+  fromLibraryLabel,
 }: {
   s: MealSuggestion;
   styles: ReturnType<typeof makeStyles>;
   colors: ThemeColors;
+  fromLibraryLabel: string;
 }) {
   return (
     <View style={styles.card}>
@@ -155,7 +154,7 @@ function SuggestionCard({
         <Text style={styles.cardName}>{s.name}</Text>
         {s.from_library ? (
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>From your library</Text>
+            <Text style={styles.badgeText}>{fromLibraryLabel}</Text>
           </View>
         ) : null}
       </View>

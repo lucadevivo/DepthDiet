@@ -4,16 +4,19 @@ import { Link, useRouter } from "expo-router";
 import { useState } from "react";
 import { useTheme, useThemed } from "../../src/theme/ThemeProvider";
 import type { ThemeColors } from "../../src/theme/colors";
+import { useI18n } from "../../src/i18n";
 import { StatStrip } from "../../src/components/StatStrip";
 import { MetricCard } from "../../src/components/MetricCard";
+import { BmiScale } from "../../src/components/BmiScale";
 import { Icon } from "../../src/components/Icon";
 import { useProfileQuery } from "../../src/hooks/useProfile";
 import { useAdaptiveQuery } from "../../src/hooks/useWeight";
 import { bodyMetricsFromProfile } from "../../src/lib/bodyMetrics";
-import { ACTIVITY_OPTIONS, GOAL_OPTIONS, type Profile } from "../../src/types/profile";
+import type { Profile } from "../../src/types/profile";
 
 export default function ProfileScreen() {
   const { colors, styles } = useThemed(makeStyles);
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const profileQuery = useProfileQuery();
@@ -22,7 +25,7 @@ export default function ProfileScreen() {
     <View style={styles.screen}>
       {/* Titolo fisso in alto: resta in cima quando si scorre (come il Diary). */}
       <View style={[styles.titleBar, { paddingTop: insets.top + 8 }]}>
-        <Text style={styles.heading}>Profile</Text>
+        <Text style={styles.heading}>{t("profile.title")}</Text>
       </View>
 
       <ScrollView
@@ -49,26 +52,26 @@ export default function ProfileScreen() {
             <Link href="/foods" asChild>
               <Pressable style={styles.catalogPill}>
                 <Icon name="food" size={18} color={colors.textMuted} />
-                <Text style={styles.catalogText}>Foods</Text>
+                <Text style={styles.catalogText}>{t("profile.foods")}</Text>
               </Pressable>
             </Link>
             <Link href="/recipes" asChild>
               <Pressable style={styles.catalogPill}>
                 <Icon name="recipe" size={18} color={colors.textMuted} />
-                <Text style={styles.catalogText}>Recipes</Text>
+                <Text style={styles.catalogText}>{t("profile.recipes")}</Text>
               </Pressable>
             </Link>
             <Link href="/meals" asChild>
               <Pressable style={styles.catalogPill}>
                 <Icon name="meals" size={18} color={colors.textMuted} />
-                <Text style={styles.catalogText}>Meals</Text>
+                <Text style={styles.catalogText}>{t("profile.meals")}</Text>
               </Pressable>
             </Link>
           </View>
 
           <Pressable style={styles.editBtn} onPress={() => router.push("/edit-data")}>
             <Icon name="profile" size={18} color={colors.onPrimary} />
-            <Text style={styles.editText}>Edit your data</Text>
+            <Text style={styles.editText}>{t("profile.editData")}</Text>
           </Pressable>
         </>
       )}
@@ -80,23 +83,22 @@ export default function ProfileScreen() {
 /** Striscia anagrafica (Height/Weight/Gender/Age) dai dati salvati. */
 function ProfileStats({ profile }: { profile: Profile | undefined }) {
   const { colors, styles } = useThemed(makeStyles);
+  const { t } = useI18n();
   if (!profile || profile.weight_kg == null) {
     return (
       <View style={styles.emptyCard}>
-        <Text style={styles.emptyText}>
-          No profile yet. Fill in your data below and compute your goals.
-        </Text>
+        <Text style={styles.emptyText}>{t("profile.empty")}</Text>
       </View>
     );
   }
-  const sexLabel = profile.sex === "male" ? "Male" : profile.sex === "female" ? "Female" : "—";
+  const sexLabel = profile.sex === "male" ? t("sex.male") : profile.sex === "female" ? t("sex.female") : "—";
   return (
     <StatStrip
       stats={[
-        { label: "Height", value: profile.height_cm != null ? `${profile.height_cm} cm` : "—" },
-        { label: "Weight", value: `${profile.weight_kg} kg` },
-        { label: "Gender", value: sexLabel },
-        { label: "Age", value: profile.age != null ? `${profile.age}` : "—" },
+        { label: t("common.height"), value: profile.height_cm != null ? `${profile.height_cm} cm` : "—" },
+        { label: t("common.weight"), value: `${profile.weight_kg} kg` },
+        { label: t("profile.gender"), value: sexLabel },
+        { label: t("common.age"), value: profile.age != null ? `${profile.age}` : "—" },
       ]}
     />
   );
@@ -105,16 +107,16 @@ function ProfileStats({ profile }: { profile: Profile | undefined }) {
 /** Goal e Activity level come dati utente (sola lettura; si modificano in "Your data"). */
 function ProfileChoices({ profile }: { profile: Profile | undefined }) {
   const { colors, styles } = useThemed(makeStyles);
+  const { t } = useI18n();
   if (!profile || (profile.goal == null && profile.activity_level == null)) return null;
-  const goalLabel = GOAL_OPTIONS.find((o) => o.value === profile.goal)?.label ?? "—";
-  const activityLabel =
-    ACTIVITY_OPTIONS.find((o) => o.value === profile.activity_level)?.label ?? "—";
+  const goalLabel = profile.goal ? t(`goal.${profile.goal}`) : "—";
+  const activityLabel = profile.activity_level ? t(`activity.${profile.activity_level}`) : "—";
   return (
     <View style={styles.choicesCard}>
       <View style={styles.choiceRow}>
         <View style={styles.choiceLabelWrap}>
           <Icon name="goal" size={18} color={colors.textMuted} />
-          <Text style={styles.choiceLabel}>Goal</Text>
+          <Text style={styles.choiceLabel}>{t("profile.goalLabel")}</Text>
         </View>
         <Text style={styles.choiceValue}>{goalLabel}</Text>
       </View>
@@ -122,7 +124,7 @@ function ProfileChoices({ profile }: { profile: Profile | undefined }) {
       <View style={styles.choiceRow}>
         <View style={styles.choiceLabelWrap}>
           <Icon name="activity" size={18} color={colors.textMuted} />
-          <Text style={styles.choiceLabel}>Activity level</Text>
+          <Text style={styles.choiceLabel}>{t("profile.activityLabel")}</Text>
         </View>
         <Text style={styles.choiceValue}>{activityLabel}</Text>
       </View>
@@ -133,19 +135,20 @@ function ProfileChoices({ profile }: { profile: Profile | undefined }) {
 /** TDEE adattivo (dal trend del peso): riepilogo + link alla schermata Weight. */
 function AdaptiveTdee() {
   const { colors } = useTheme();
+  const { t } = useI18n();
   const router = useRouter();
   const adaptive = useAdaptiveQuery();
   const d = adaptive.data;
   const value = !d
     ? "—"
     : d.hasEnoughData && d.trendKgPerWeek != null
-      ? `${d.trendKgPerWeek} kg/week`
-      : "Log your weight";
+      ? t("metric.kgPerWeek", { v: d.trendKgPerWeek })
+      : t("metric.logYourWeight");
   return (
     <MetricCard
       icon="weight"
       iconColor={colors.water}
-      label="Adaptive TDEE"
+      label={t("metric.adaptiveTdee")}
       value={value}
       onPress={() => router.push("/weight")}
     />
@@ -157,25 +160,10 @@ type MetricKey = "bmr" | "bmi" | "water";
 /** Colore FISSO dell'icona BMR: non segue l'accento del tema. */
 const BMR_COLOR = "#FF6A3D";
 
-/** Spiegazioni mostrate nel popup quando si tocca una metrica. */
-const METRIC_INFO: Record<MetricKey, { title: string; text: string }> = {
-  bmr: {
-    title: "Basal Metabolic Rate",
-    text: "The calories your body burns at complete rest, just to keep vital functions going — breathing, circulation, brain activity. It's your baseline before any movement or exercise is added.",
-  },
-  bmi: {
-    title: "Body Mass Index",
-    text: "Your weight relative to your height (kg/m²). It's a quick screening number for under-, normal- and over-weight ranges, but it doesn't tell muscle from fat, so treat it as a rough guide.",
-  },
-  water: {
-    title: "Water requirement",
-    text: "An estimate of the fluids your body needs each day, based mainly on your weight. It's a general guideline, not a strict target — your needs rise with heat, exercise and illness.",
-  },
-};
-
 /** Card metriche calcolate: BMR, BMI, fabbisogno idrico. Toccandole si apre la spiegazione. */
 function Metrics({ profile }: { profile: Profile | undefined }) {
   const { colors, styles } = useThemed(makeStyles);
+  const { t } = useI18n();
   const [info, setInfo] = useState<MetricKey | null>(null);
   const m = bodyMetricsFromProfile(profile);
   if (!m) return null;
@@ -184,7 +172,7 @@ function Metrics({ profile }: { profile: Profile | undefined }) {
       <MetricCard
         icon="calories"
         iconColor={BMR_COLOR}
-        label="Basal Metabolic Rate"
+        label={t("metric.bmr")}
         value={`${m.bmr} kcal`}
         onPress={() => setInfo("bmr")}
         info
@@ -192,15 +180,17 @@ function Metrics({ profile }: { profile: Profile | undefined }) {
       <MetricCard
         icon="bmi"
         iconColor={colors.carbs}
-        label="Body Mass Index"
-        value={`${m.bmi} · ${m.bmiCategory}`}
+        label={t("metric.bmi")}
+        value={`${m.bmi} · ${t(
+          m.bmi < 18.5 ? "bmi.underweight" : m.bmi < 25 ? "bmi.normal" : m.bmi < 30 ? "bmi.overweight" : "bmi.obese",
+        )}`}
         onPress={() => setInfo("bmi")}
         info
       />
       <MetricCard
         icon="water"
         iconColor={colors.water}
-        label="Water requirement"
+        label={t("metric.water")}
         value={`${(m.waterMl / 1000).toFixed(1)} L`}
         onPress={() => setInfo("water")}
         info
@@ -209,10 +199,11 @@ function Metrics({ profile }: { profile: Profile | undefined }) {
       <Modal visible={info != null} transparent animationType="fade" onRequestClose={() => setInfo(null)}>
         <Pressable style={styles.infoBackdrop} onPress={() => setInfo(null)}>
           <Pressable style={styles.infoCard} onPress={() => {}}>
-            <Text style={styles.infoTitle}>{info ? METRIC_INFO[info].title : ""}</Text>
-            <Text style={styles.infoText}>{info ? METRIC_INFO[info].text : ""}</Text>
+            <Text style={styles.infoTitle}>{info ? t(`metric.${info}`) : ""}</Text>
+            <Text style={styles.infoText}>{info ? t(`metric.${info}.text`) : ""}</Text>
+            {info === "bmi" ? <BmiScale value={m.bmi} /> : null}
             <Pressable style={styles.infoBtn} onPress={() => setInfo(null)}>
-              <Text style={styles.infoBtnText}>Got it</Text>
+              <Text style={styles.infoBtnText}>{t("common.gotIt")}</Text>
             </Pressable>
           </Pressable>
         </Pressable>
@@ -223,14 +214,12 @@ function Metrics({ profile }: { profile: Profile | undefined }) {
 
 function ErrorBox({ onRetry }: { onRetry: () => void }) {
   const { colors, styles } = useThemed(makeStyles);
+  const { t } = useI18n();
   return (
     <View style={styles.emptyCard}>
-      <Text style={styles.errorText}>
-        Could not load your profile. Make sure the backend is reachable and your credentials are set
-        up.
-      </Text>
+      <Text style={styles.errorText}>{t("profile.loadError")}</Text>
       <Pressable onPress={onRetry} style={styles.retryBtn}>
-        <Text style={styles.saveText}>Retry</Text>
+        <Text style={styles.saveText}>{t("common.retry")}</Text>
       </Pressable>
     </View>
   );

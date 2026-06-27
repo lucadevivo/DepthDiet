@@ -1,6 +1,7 @@
 import { Tabs } from "expo-router";
 import type { ColorValue } from "react-native";
 import { useTheme } from "../../src/theme/ThemeProvider";
+import { useI18n } from "../../src/i18n";
 import { Icon, type IconName } from "../../src/components/Icon";
 
 // Diary resta la schermata di apertura anche se nella barra è la seconda tab.
@@ -17,6 +18,7 @@ function TabBarIcon({ name, color, size }: { name: IconName; color: ColorValue; 
  */
 export default function TabsLayout() {
   const { colors } = useTheme();
+  const { t } = useI18n();
   return (
     <Tabs
       screenOptions={{
@@ -34,28 +36,28 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
+          title: t("tab.profile"),
           tabBarIcon: ({ color, size }) => <TabBarIcon name="profile" color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="index"
         options={{
-          title: "Diary",
+          title: t("tab.diary"),
           tabBarIcon: ({ color, size }) => <TabBarIcon name="diary" color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="goals"
         options={{
-          title: "Goals",
+          title: t("tab.goals"),
           tabBarIcon: ({ color, size }) => <TabBarIcon name="goals" color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
-          title: "Settings",
+          title: t("tab.settings"),
           tabBarIcon: ({ color, size }) => <TabBarIcon name="settings" color={color} size={size} />,
         }}
       />

@@ -2,6 +2,7 @@ import { View, Text, Pressable, StyleSheet } from "react-native";
 import { useTheme, useThemed } from "../theme/ThemeProvider";
 import type { ThemeColors } from "../theme/colors";
 import { Icon } from "./Icon";
+import { useI18n } from "../i18n";
 import type { DiaryEntry } from "../types/diary";
 
 interface Props {
@@ -36,6 +37,7 @@ function MacroCell({ value, label, color, unit = "" }: { value: number; label: s
  */
 export function MealCard({ title, entries, onAdd, onDelete, onEditEntry, showAdd = true }: Props) {
   const { colors, styles } = useThemed(makeStyles);
+  const { t: tr } = useI18n();
   const t = entries.reduce(
     (acc, e) => {
       acc.kcal += e.kcal;
@@ -52,10 +54,10 @@ export function MealCard({ title, entries, onAdd, onDelete, onEditEntry, showAdd
       <Text style={styles.title}>{title}</Text>
 
       <View style={styles.macroRow}>
-        <MacroCell value={t.carbs} label="Carbs" color={colors.carbs} unit="g" />
-        <MacroCell value={t.protein} label="Protein" color={colors.protein} unit="g" />
-        <MacroCell value={t.fat} label="Fat" color={colors.fat} unit="g" />
-        <MacroCell value={t.kcal} label="Calories" color={colors.textMuted} />
+        <MacroCell value={t.carbs} label={tr("common.carbs")} color={colors.carbs} unit="g" />
+        <MacroCell value={t.protein} label={tr("common.protein")} color={colors.protein} unit="g" />
+        <MacroCell value={t.fat} label={tr("common.fat")} color={colors.fat} unit="g" />
+        <MacroCell value={t.kcal} label={tr("common.calories")} color={colors.textMuted} />
       </View>
 
       {entries.length > 0 ? (
@@ -71,12 +73,12 @@ export function MealCard({ title, entries, onAdd, onDelete, onEditEntry, showAdd
                   disabled={!editable}
                 >
                   <Text style={styles.entryName} numberOfLines={1}>
-                    {e.description ?? "Voce"}
+                    {e.description ?? tr("comp.entry")}
                   </Text>
                   <Text style={styles.entryMeta}>
                     {e.grams != null ? `${e.grams} g · ` : ""}
                     {e.kcal} kcal
-                    {editable ? "  ·  tap to edit" : ""}
+                    {editable ? `  ·  ${tr("comp.tapToEdit")}` : ""}
                   </Text>
                 </Pressable>
                 <Pressable onPress={() => onDelete(e.id)} hitSlop={10} style={styles.del}>
@@ -91,7 +93,7 @@ export function MealCard({ title, entries, onAdd, onDelete, onEditEntry, showAdd
       {showAdd ? (
         <Pressable onPress={onAdd} style={styles.addBtn} hitSlop={6}>
           <Icon name="add" size={18} color={colors.primary} />
-          <Text style={styles.addText}>Add</Text>
+          <Text style={styles.addText}>{tr("comp.add")}</Text>
         </Pressable>
       ) : null}
     </View>

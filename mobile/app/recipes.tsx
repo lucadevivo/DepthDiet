@@ -14,6 +14,7 @@ import { NumberField } from "../src/components/NumberField";
 import { Icon } from "../src/components/Icon";
 import { useThemed } from "../src/theme/ThemeProvider";
 import type { ThemeColors } from "../src/theme/colors";
+import { useI18n } from "../src/i18n";
 import {
   useCreateRecipe,
   useDeleteRecipe,
@@ -30,6 +31,7 @@ interface DraftItem {
 
 export default function RecipesScreen() {
   const { colors, styles } = useThemed(makeStyles);
+  const { t } = useI18n();
   const recipes = useRecipesQuery();
   const foods = useFoodsQuery();
   const createRecipe = useCreateRecipe();
@@ -72,19 +74,19 @@ export default function RecipesScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader title="Recipes" />
+      <ScreenHeader title={t("recipes.title")} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>New recipe</Text>
+          <Text style={styles.cardTitle}>{t("recipes.new")}</Text>
           <TextInput
             style={styles.input}
-            placeholder="Name (e.g. Chicken and rice)"
+            placeholder={t("recipes.namePlaceholder")}
             placeholderTextColor={colors.textMuted}
             value={name}
             onChangeText={setName}
           />
 
-          <Text style={styles.sub}>Ingredients</Text>
+          <Text style={styles.sub}>{t("recipes.ingredients")}</Text>
           {items.map((it, idx) => (
             <View key={idx} style={styles.itemRow}>
               <Text style={styles.itemText}>
@@ -96,12 +98,12 @@ export default function RecipesScreen() {
             </View>
           ))}
 
-          <Text style={styles.sub}>Add ingredient</Text>
-          <Text style={styles.hint}>Tap a food, then choose how many grams.</Text>
+          <Text style={styles.sub}>{t("recipes.addIngredient")}</Text>
+          <Text style={styles.hint}>{t("recipes.tapFood")}</Text>
           {foods.isLoading ? (
             <ActivityIndicator color={colors.primary} />
           ) : (foods.data ?? []).length === 0 ? (
-            <Text style={styles.empty}>Create some foods first.</Text>
+            <Text style={styles.empty}>{t("recipes.createFoodsFirst")}</Text>
           ) : (
             <View style={{ gap: 6 }}>
               {(foods.data ?? []).map((food) => (
@@ -121,25 +123,25 @@ export default function RecipesScreen() {
             {createRecipe.isPending ? (
               <ActivityIndicator color={colors.onPrimary} />
             ) : (
-              <Text style={styles.btnText}>Save recipe</Text>
+              <Text style={styles.btnText}>{t("recipes.save")}</Text>
             )}
           </Pressable>
         </View>
 
-        <Text style={styles.listTitle}>Your recipes</Text>
+        <Text style={styles.listTitle}>{t("recipes.yours")}</Text>
         {recipes.isLoading ? (
           <ActivityIndicator color={colors.primary} />
         ) : recipes.isError ? (
-          <Text style={styles.error}>Could not load.</Text>
+          <Text style={styles.error}>{t("common.couldNotLoad")}</Text>
         ) : (recipes.data ?? []).length === 0 ? (
-          <Text style={styles.empty}>No recipes yet.</Text>
+          <Text style={styles.empty}>{t("recipes.none")}</Text>
         ) : (
           (recipes.data ?? []).map((r) => (
             <View key={r.id} style={styles.recipeRow}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.recipeName}>{r.name}</Text>
                 <Text style={styles.recipeMeta}>
-                  {r.itemCount} items · {r.totals.kcal} kcal · P {r.totals.protein_g}g
+                  {t("recipes.itemsMeta", { count: r.itemCount, kcal: r.totals.kcal, protein: r.totals.protein_g })}
                 </Text>
               </View>
               <Pressable onPress={() => deleteRecipe.mutate(r.id)} hitSlop={10}>
@@ -160,12 +162,12 @@ export default function RecipesScreen() {
         <Pressable style={styles.modalBackdrop} onPress={() => setPicking(null)}>
           <Pressable style={styles.modalCard} onPress={() => {}}>
             <Text style={styles.modalTitle}>{picking?.name}</Text>
-            <NumberField label="Grams" value={modalGrams} onChangeText={setModalGrams} unit="g" />
+            <NumberField label={t("common.grams")} value={modalGrams} onChangeText={setModalGrams} unit="g" />
             <Pressable
               onPress={confirmGrams}
               style={[styles.btn, { marginTop: 0 }]}
             >
-              <Text style={styles.btnText}>Add ingredient</Text>
+              <Text style={styles.btnText}>{t("recipes.addIngredient")}</Text>
             </Pressable>
           </Pressable>
         </Pressable>

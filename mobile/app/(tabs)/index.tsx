@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { ScrollView, View, Text, Pressable, ActivityIndicator, StyleSheet } from "react-native";
+import { ScrollView, View, Text, Pressable, ActivityIndicator, Modal, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTheme, useThemed } from "../../src/theme/ThemeProvider";
+import { useI18n } from "../../src/i18n";
 import type { ThemeColors } from "../../src/theme/colors";
 import { todayISO, shiftISO, formatDayLabel } from "../../src/lib/date";
 import { useDiaryQuery, useDeleteDiaryEntry } from "../../src/hooks/useDiary";
@@ -22,9 +23,12 @@ const FALLBACK = { calories: 2600, protein_g: 190, carbs_g: 270, fat_g: 75 };
 
 export default function DiaryScreen() {
   const { colors, styles } = useThemed(makeStyles);
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [date, setDate] = useState(todayISO());
+  // Box informativo "perché potrebbero mancare meno calorie dei macro" (#1).
+  const [showCalInfo, setShowCalInfo] = useState(false);
 
   const diary = useDiaryQuery(date);
   const del = useDeleteDiaryEntry(date);
@@ -61,7 +65,7 @@ export default function DiaryScreen() {
     <View style={styles.screen}>
       {/* Titolo schermata fisso in alto a sinistra, come le altre schede. */}
       <View style={[styles.titleBar, { paddingTop: insets.top + 8 }]}>
-        <Text style={styles.heading}>Diary</Text>
+        <Text style={styles.heading}>{t("diary.title")}</Text>
       </View>
 
       <ScrollView
@@ -83,7 +87,7 @@ export default function DiaryScreen() {
         </View>
 
         {diary.isError ? (
-          <Text style={styles.error}>Backend unreachable: check URL and credentials.</Text>
+          <Text style={styles.error}>{t("diary.backendError")}</Text>
         ) : null}
 
         {/* Daily totals card */}
@@ -97,25 +101,32 @@ export default function DiaryScreen() {
             color={colors.primary}
             height={10}
           />
-          <Text style={styles.kcalLeft}>
-            {kcalLeft > 0 ? `${kcalLeft} kcal left` : "goal reached"}
-          </Text>
+          <Pressable
+            style={styles.kcalLeftRow}
+            onPress={() => setShowCalInfo(true)}
+            hitSlop={8}
+          >
+            <Text style={styles.kcalLeft}>
+              {kcalLeft > 0 ? t("diary.kcalLeft", { n: kcalLeft }) : t("diary.goalReached")}
+            </Text>
+            <Icon name="bulb" size={14} color={colors.textMuted} />
+          </Pressable>
 
           <View style={styles.macroCols}>
             <MacroProgressColumn
-              label="Carbs"
+              label={t("diary.carbs")}
               current={totals.carbs_g}
               target={targets.carbs_g}
               color={colors.carbs}
             />
             <MacroProgressColumn
-              label="Protein"
+              label={t("diary.protein")}
               current={totals.protein_g}
               target={targets.protein_g}
               color={colors.protein}
             />
             <MacroProgressColumn
-              label="Fat"
+              label={t("diary.fat")}
               current={totals.fat_g}
               target={targets.fat_g}
               color={colors.fat}
@@ -139,7 +150,7 @@ export default function DiaryScreen() {
             ))}
             {orphanEntries.length > 0 ? (
               <MealCard
-                title="Other"
+                title={t("diary.other")}
                 entries={orphanEntries}
                 onAdd={() => {}}
                 onDelete={(id) => del.mutate(id)}
@@ -162,14 +173,25 @@ export default function DiaryScreen() {
               onPress={() => router.push(`/diary/suggest?date=${date}`)}
             >
               <Icon name="bulb" size={20} color={colors.onPrimary} />
-              <Text style={styles.suggestText}>What should I eat?</Text>
+              <Text style={styles.suggestText}>{t("diary.whatToEat")}</Text>
             </Pressable>
-            <Text style={styles.suggestHint}>
-              Get an AI suggestion to reach today's goal.
-            </Text>
+            <Text style={styles.suggestHint}>{t("diary.whatToEatHint")}</Text>
           </>
         )}
       </ScrollView>
+
+      {/* #1 — Spiegazione: le calorie mancanti possono essere meno di quelle dei macro. */}
+      <Modal visible={showCalInfo} transparent animationType="fade" onRequestClose={() => setShowCalInfo(false)}>
+        <Pressable style={styles.infoBackdrop} onPress={() => setShowCalInfo(false)}>
+          <Pressable style={styles.infoCard} onPress={() => {}}>
+            <Text style={styles.infoTitle}>{t("diary.calInfo.title")}</Text>
+            <Text style={styles.infoText}>{t("diary.calInfo.body")}</Text>
+            <Pressable style={styles.infoBtn} onPress={() => setShowCalInfo(false)}>
+              <Text style={styles.infoBtnText}>{t("common.gotIt")}</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -204,6 +226,7 @@ const makeStyles = (colors: ThemeColors) =>
   kcalRow: { flexDirection: "row", alignItems: "baseline", justifyContent: "center" },
   kcalConsumed: { color: colors.text, fontSize: 32, fontWeight: "800" },
   kcalTarget: { color: colors.textMuted, fontSize: 16, fontWeight: "600" },
+  kcalLeftRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5 },
   kcalLeft: { color: colors.textMuted, fontSize: 12, textAlign: "center" },
   macroCols: { flexDirection: "row", gap: 12, marginTop: 6 },
 
@@ -221,4 +244,31 @@ const makeStyles = (colors: ThemeColors) =>
   },
   suggestText: { color: colors.onPrimary, fontSize: 16, fontWeight: "800" },
   suggestHint: { color: colors.textMuted, fontSize: 12, textAlign: "center", marginTop: -6 },
+
+  infoBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 28,
+  },
+  infoCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 18,
+    padding: 20,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    width: "100%",
+  },
+  infoTitle: { color: colors.text, fontSize: 18, fontWeight: "800" },
+  infoText: { color: colors.textMuted, fontSize: 14, lineHeight: 20 },
+  infoBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+    marginTop: 4,
+  },
+  infoBtnText: { color: colors.onPrimary, fontSize: 15, fontWeight: "800" },
 });

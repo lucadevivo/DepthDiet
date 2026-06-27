@@ -64,4 +64,6 @@ export interface AnalyzeInput {
   depth?: { volumeMl?: number; quality?: DepthQuality };
   /** Oggetto di riferimento di scala presente in foto (Fase 4b), aiuta a stimare le porzioni. */
   reference?: { type: ReferenceType };
+  /** Lingua della risposta dell'IA (codice ISO, es. "it"). Default "en". */
+  lang?: string;
 }

@@ -4,12 +4,7 @@ import { SegmentedControl } from "../src/components/SegmentedControl";
 import { Icon } from "../src/components/Icon";
 import { useTheme, useThemed, type ThemeMode } from "../src/theme/ThemeProvider";
 import type { ThemeColors, ColorOption } from "../src/theme/colors";
-
-const THEME_OPTIONS: { value: ThemeMode; label: string }[] = [
-  { value: "dark", label: "Dark" },
-  { value: "light", label: "Light" },
-  { value: "system", label: "System" },
-];
+import { useI18n } from "../src/i18n";
 
 /**
  * Schermata dedicata all'aspetto: tema chiaro/scuro, accento cromatico, colore di
@@ -18,6 +13,12 @@ const THEME_OPTIONS: { value: ThemeMode; label: string }[] = [
  */
 export default function AppearanceScreen() {
   const { colors, styles } = useThemed(makeStyles);
+  const { t } = useI18n();
+  const THEME_OPTIONS: { value: ThemeMode; label: string }[] = [
+    { value: "dark", label: t("appearance.dark") },
+    { value: "light", label: t("appearance.light") },
+    { value: "system", label: t("appearance.system") },
+  ];
   const {
     mode,
     setMode,
@@ -35,13 +36,13 @@ export default function AppearanceScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader title="Appearance" />
+      <ScreenHeader title={t("settings.appearance")} />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
       >
         {/* Anteprima dal vivo della combinazione di colori. */}
-        <Text style={styles.group}>Preview</Text>
+        <Text style={styles.group}>{t("appearance.preview")}</Text>
         <View style={styles.preview}>
           <View style={styles.previewTotals}>
             <Text style={styles.previewKcal}>1,480</Text>
@@ -51,25 +52,25 @@ export default function AppearanceScreen() {
             <View style={[styles.previewBarFill, { backgroundColor: colors.primary }]} />
           </View>
           <View style={styles.previewMacros}>
-            <PreviewMacro label="Carbs" color={colors.carbs} styles={styles} />
-            <PreviewMacro label="Protein" color={colors.protein} styles={styles} />
-            <PreviewMacro label="Fat" color={colors.fat} styles={styles} />
+            <PreviewMacro label={t("common.carbs")} color={colors.carbs} styles={styles} />
+            <PreviewMacro label={t("common.protein")} color={colors.protein} styles={styles} />
+            <PreviewMacro label={t("common.fat")} color={colors.fat} styles={styles} />
           </View>
           <View style={[styles.previewBtn, { backgroundColor: colors.primary }]}>
-            <Text style={[styles.previewBtnText, { color: colors.onPrimary }]}>Add food</Text>
+            <Text style={[styles.previewBtnText, { color: colors.onPrimary }]}>{t("appearance.addFood")}</Text>
           </View>
-          <Text style={styles.previewMuted}>This is how your colors look.</Text>
+          <Text style={styles.previewMuted}>{t("appearance.previewMuted")}</Text>
         </View>
 
         {/* Tema chiaro/scuro */}
-        <Text style={styles.group}>Theme</Text>
+        <Text style={styles.group}>{t("appearance.theme")}</Text>
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Light / Dark</Text>
+          <Text style={styles.cardTitle}>{t("appearance.lightDark")}</Text>
           <SegmentedControl options={THEME_OPTIONS} value={mode} onChange={setMode} />
         </View>
 
         {/* Accento */}
-        <Text style={styles.group}>Color theme</Text>
+        <Text style={styles.group}>{t("appearance.colorTheme")}</Text>
         <View style={styles.card}>
           <View style={styles.swatches}>
             {accents.map((a) => {
@@ -96,13 +97,13 @@ export default function AppearanceScreen() {
         </View>
 
         {/* Sfondo */}
-        <Text style={styles.group}>Background color</Text>
+        <Text style={styles.group}>{t("appearance.bgColor")}</Text>
         <View style={styles.card}>
           <ColorSwatches options={bgPresets} activeId={bgColorId} onSelect={setBgColorId} />
         </View>
 
         {/* Box */}
-        <Text style={styles.group}>Box color</Text>
+        <Text style={styles.group}>{t("appearance.boxColor")}</Text>
         <View style={styles.card}>
           <ColorSwatches options={surfacePresets} activeId={surfaceColorId} onSelect={setSurfaceColorId} />
         </View>
@@ -147,6 +148,7 @@ function ColorSwatches({
   onSelect: (id: string) => void;
 }) {
   const { colors, styles } = useThemed(makeStyles);
+  const { t } = useI18n();
   return (
     <View style={styles.swatches}>
       {options.map((o) => {
@@ -166,7 +168,7 @@ function ColorSwatches({
               {active ? <Icon name="check" size={18} color={isLight(o.value) ? "#111" : "#fff"} /> : null}
             </View>
             <Text style={[styles.swatchLabel, active && styles.swatchLabelActive]} numberOfLines={1}>
-              {o.label}
+              {o.id === "default" ? t("appearance.default") : o.label}
             </Text>
           </Pressable>
         );

@@ -3,6 +3,7 @@ import { env } from "../../config/env.js";
 import { getCustomFoodsByUsage, type CustomFood } from "../../repositories/customFoods.js";
 import { matchFoodsInContext } from "./foodMatch.js";
 import { buildMealPrompt } from "./prompt.js";
+import { wantsLibraryMatch } from "./lang.js";
 import { mealAnalysisSchema } from "./schema.js";
 import type { AnalyzeInput, AnalyzeResult, MealAnalysis, MealItem } from "./types.js";
 
@@ -137,14 +138,15 @@ function normalizeItem(item: MealItem, matchedById: Map<number, CustomFood>): Me
 export async function analyzeMeal(input: AnalyzeInput): Promise<AnalyzeResult> {
   const ai = getClient();
 
-  // 1. Match dal database PRIMA di chiamare Gemini.
-  // I "matched" dal contesto sono forzati nel prompt; la libreria (ordinata per
-  // frequenza d'uso) viene passata a Gemini perché possa abbinare ciò che l'utente
-  // nomina nel prompt o riconosce nel piatto — il prompt la taglia ai più usati.
-  // La mappa copre TUTTA la libreria così qualsiasi matched_food_id restituito
-  // viene ricalcolato sui macro reali del DB.
-  const allFoods = getCustomFoodsByUsage();
-  const matched = matchFoodsInContext(input.contextText, allFoods);
+  // 1. Match dal database PRIMA di chiamare Gemini — MA solo se l'utente lo chiede
+  // scrivendo "libreria"/"library" nel prompt. Senza quella parola lo scanner stima
+  // e basta, senza toccare gli Alimenti Personali. Quando attivo: i "matched" dal
+  // contesto sono forzati nel prompt; la libreria (ordinata per uso, tagliata ai più
+  // usati) è passata a Gemini per abbinare ciò che l'utente nomina o riconosce; la
+  // mappa copre TUTTA la libreria così ogni matched_food_id torna sui macro reali.
+  const useLibrary = wantsLibraryMatch(input.contextText);
+  const allFoods = useLibrary ? getCustomFoodsByUsage() : [];
+  const matched = useLibrary ? matchFoodsInContext(input.contextText, allFoods) : [];
   const matchedById = new Map(allFoods.map((f) => [f.id, f]));
 
   // 2. Prompt + immagine inline.

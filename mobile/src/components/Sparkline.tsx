@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet } from "react-native";
 import { useTheme, useThemed } from "../theme/ThemeProvider";
 import type { ThemeColors } from "../theme/colors";
+import { useI18n } from "../i18n";
 
 interface Props {
   values: number[];
@@ -14,9 +15,10 @@ interface Props {
  */
 export function Sparkline({ values, height = 80, color }: Props) {
   const { colors, styles } = useThemed(makeStyles);
+  const { t } = useI18n();
   const stroke = color ?? colors.calories;
   if (values.length < 2) {
-    return <Text style={styles.empty}>Need at least 2 measurements for the chart.</Text>;
+    return <Text style={styles.empty}>{t("weight.chartNeedTwo")}</Text>;
   }
   const min = Math.min(...values);
   const max = Math.max(...values);

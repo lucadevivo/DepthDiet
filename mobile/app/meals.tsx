@@ -15,6 +15,7 @@ import { ScreenHeader } from "../src/components/ScreenHeader";
 import { Icon } from "../src/components/Icon";
 import { useThemed } from "../src/theme/ThemeProvider";
 import type { ThemeColors } from "../src/theme/colors";
+import { useI18n } from "../src/i18n";
 import {
   useMealsQuery,
   useCreateMeal,
@@ -30,6 +31,7 @@ const ITEM_H = 64;
 /** Profile → Meals: crea, rinomina, riordina (drag-and-drop) ed elimina i pasti. */
 export default function MealsScreen() {
   const { colors, styles } = useThemed(makeStyles);
+  const { t } = useI18n();
   const meals = useMealsQuery();
   const create = useCreateMeal();
   const [newName, setNewName] = useState("");
@@ -43,21 +45,18 @@ export default function MealsScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader title="Meals" />
+      <ScreenHeader title={t("meals.title")} />
       <ScrollView showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
         scrollEnabled={scrollEnabled}
       >
-        <Text style={styles.lead}>
-          Your meals organize the diary. Drag the handle on the left to reorder, tap a name to
-          rename, or delete — deleting a meal keeps its past entries under "Other".
-        </Text>
+        <Text style={styles.lead}>{t("meals.lead")}</Text>
 
         {meals.isLoading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: 16 }} />
         ) : meals.isError ? (
-          <Text style={styles.error}>Could not load meals. Check connection/credentials.</Text>
+          <Text style={styles.error}>{t("meals.loadError")}</Text>
         ) : (
           <DraggableMeals meals={meals.data ?? []} onDraggingChange={(d) => setScrollEnabled(!d)} />
         )}
@@ -66,7 +65,7 @@ export default function MealsScreen() {
         <View style={styles.addCard}>
           <TextInput
             style={styles.input}
-            placeholder="New meal name"
+            placeholder={t("meals.newName")}
             placeholderTextColor={colors.textMuted}
             value={newName}
             onChangeText={setNewName}
@@ -219,6 +218,7 @@ function MealDragRow({
   onCancel: () => void;
 }) {
   const { colors, styles } = useThemed(makeStyles);
+  const { t } = useI18n();
   const rename = useRenameMeal();
   const del = useDeleteMeal();
   const [editing, setEditing] = useState(false);
@@ -246,9 +246,9 @@ function MealDragRow({
   };
 
   const confirmDelete = () => {
-    Alert.alert("Delete meal", `Delete "${meal.name}"? Past entries will move to "Other".`, [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: () => del.mutate(meal.id) },
+    Alert.alert(t("meals.deleteTitle"), t("meals.deleteMsg", { name: meal.name }), [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("common.delete"), style: "destructive", onPress: () => del.mutate(meal.id) },
     ]);
   };
 

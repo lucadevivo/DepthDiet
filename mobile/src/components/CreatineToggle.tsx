@@ -2,6 +2,7 @@ import { View, Text, Pressable, StyleSheet } from "react-native";
 import { useThemed } from "../theme/ThemeProvider";
 import type { ThemeColors } from "../theme/colors";
 import { Icon } from "./Icon";
+import { useI18n } from "../i18n";
 import { useCreatineQuery, useSetCreatine } from "../hooks/useCreatine";
 
 interface Props {
@@ -16,6 +17,7 @@ interface Props {
  */
 export function CreatineToggle({ date }: Props) {
   const { colors, styles } = useThemed(makeStyles);
+  const { t } = useI18n();
   const creatine = useCreatineQuery(date);
   const setCreatine = useSetCreatine(date);
   const taken = creatine.data?.taken ?? false;
@@ -28,7 +30,7 @@ export function CreatineToggle({ date }: Props) {
       <View style={styles.titleRow}>
         {/* Crema fissa: richiama la polvere di creatina, indipendente dall'accento. */}
         <Icon name="creatine" size={18} color="#F0E8D4" />
-        <Text style={styles.title}>Creatine taken today</Text>
+        <Text style={styles.title}>{t("comp.creatineTaken")}</Text>
       </View>
       <View style={[styles.check, taken && styles.checkOn]}>
         {taken ? <Icon name="check" size={16} color={colors.onPrimary} /> : null}

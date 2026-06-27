@@ -3,6 +3,7 @@ import { useThemed } from "../theme/ThemeProvider";
 import type { ThemeColors } from "../theme/colors";
 import { ProgressBar } from "./ProgressBar";
 import { Icon } from "./Icon";
+import { useI18n } from "../i18n";
 import { useWaterQuery, useAddWater } from "../hooks/useWater";
 
 interface Props {
@@ -22,6 +23,7 @@ const GLASS_ML = 250;
  */
 export function WaterCounter({ date, targetMl }: Props) {
   const { colors, styles } = useThemed(makeStyles);
+  const { t } = useI18n();
   const water = useWaterQuery(date);
   const addWater = useAddWater(date);
   const ml = water.data?.total_ml ?? 0;
@@ -36,7 +38,7 @@ export function WaterCounter({ date, targetMl }: Props) {
       <View style={styles.header}>
         <View style={styles.titleRow}>
           <Icon name="water" size={18} color={colors.water} />
-          <Text style={styles.title}>Water</Text>
+          <Text style={styles.title}>{t("comp.water")}</Text>
         </View>
         <Text style={styles.amount}>
           {liters} / {targetL} L{reached ? "  ✓" : ""}

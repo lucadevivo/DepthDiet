@@ -27,4 +27,6 @@ export interface SuggestBody {
   onlyLibrary: boolean;
   /** Richiesta libera opzionale (un cibo/bevanda, una voglia, dove ti trovi...). */
   note?: string;
+  /** Lingua della risposta dell'IA (codice ISO, es. "it"). */
+  lang?: string;
 }

@@ -8,6 +8,7 @@ import { OptionList } from "../src/components/OptionList";
 import { Icon } from "../src/components/Icon";
 import { useThemed } from "../src/theme/ThemeProvider";
 import type { ThemeColors } from "../src/theme/colors";
+import { useI18n } from "../src/i18n";
 import { useProfileQuery, useUpdateProfile } from "../src/hooks/useProfile";
 import {
   ACTIVITY_OPTIONS,
@@ -18,28 +19,26 @@ import {
   type Sex,
 } from "../src/types/profile";
 
-/** Spiegazioni mostrate nel popup (lampadina) accanto a Goal/Activity. */
-const FIELD_INFO: Record<"goal" | "activity", { title: string; text: string }> = {
-  goal: {
-    title: "Goal",
-    text:
-      "How your daily calories are shifted from your maintenance (TDEE) to reach your goal — a deficit to lose weight, a surplus to gain:\n\n" +
-      "• Lose weight: −20%\n• Lose weight slowly: −10%\n• Maintain: 0% (normocaloric)\n• Light bulk: +10%\n• Bulk: +20%",
-  },
-  activity: {
-    title: "Activity level",
-    text:
-      "How much you move on top of your basal metabolism. It multiplies your BMR to estimate the calories you burn in a day (your TDEE):\n\n" +
-      "• Sedentary: ×1.2 (little or no exercise)\n• Light: ×1.375 (1–3 workouts/week)\n• Moderate: ×1.55 (3–5/week)\n• Active: ×1.725 (6–7/week)\n• Very active: ×1.9 (2×/day or physical job)",
-  },
-};
-
 /** Form anagrafico (peso/altezza/età, gender, goal, attività) come schermata a sé. */
 export default function EditDataScreen() {
   const { colors, styles } = useThemed(makeStyles);
+  const { t } = useI18n();
   const router = useRouter();
   const profileQuery = useProfileQuery();
   const updateProfile = useUpdateProfile();
+
+  // Opzioni localizzate per i selettori.
+  const sexOptions = SEX_OPTIONS.map((o) => ({ value: o.value, label: t(`sex.${o.value}`) }));
+  const goalOptions = GOAL_OPTIONS.map((o) => ({
+    value: o.value,
+    label: t(`goal.${o.value}`),
+    desc: t(`goal.${o.value}.desc`),
+  }));
+  const activityOptions = ACTIVITY_OPTIONS.map((o) => ({
+    value: o.value,
+    label: t(`activity.${o.value}`),
+    desc: t(`activity.${o.value}.desc`),
+  }));
 
   const [weight, setWeight] = useState("");
   const [height, setHeight] = useState("");
@@ -99,31 +98,31 @@ export default function EditDataScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader title="Your data" />
+      <ScreenHeader title={t("editData.title")} />
       <ScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.fieldRow}>
-          <NumberField label="Weight" value={weight} onChangeText={setWeight} unit="kg" />
-          <NumberField label="Height" value={height} onChangeText={setHeight} unit="cm" />
-          <NumberField label="Age" value={age} onChangeText={setAge} unit="y" />
+          <NumberField label={t("common.weight")} value={weight} onChangeText={setWeight} unit="kg" />
+          <NumberField label={t("common.height")} value={height} onChangeText={setHeight} unit="cm" />
+          <NumberField label={t("common.age")} value={age} onChangeText={setAge} unit="y" />
         </View>
 
-        <Text style={styles.fieldLabel}>Gender</Text>
-        <SegmentedControl options={SEX_OPTIONS} value={sex} onChange={setSex} />
+        <Text style={styles.fieldLabel}>{t("profile.gender")}</Text>
+        <SegmentedControl options={sexOptions} value={sex} onChange={setSex} />
 
-        <LabelWithInfo label="Goal" onInfo={() => setInfo("goal")} styles={styles} colors={colors} />
-        <OptionList options={GOAL_OPTIONS} value={goal} onChange={setGoal} />
+        <LabelWithInfo label={t("profile.goalLabel")} onInfo={() => setInfo("goal")} styles={styles} colors={colors} />
+        <OptionList options={goalOptions} value={goal} onChange={setGoal} />
 
         <LabelWithInfo
-          label="Activity level"
+          label={t("profile.activityLabel")}
           onInfo={() => setInfo("activity")}
           styles={styles}
           colors={colors}
         />
-        <OptionList options={ACTIVITY_OPTIONS} value={activity} onChange={setActivity} />
+        <OptionList options={activityOptions} value={activity} onChange={setActivity} />
 
         <Pressable
           onPress={onSave}
@@ -133,24 +132,26 @@ export default function EditDataScreen() {
           {updateProfile.isPending ? (
             <ActivityIndicator color={colors.onPrimary} />
           ) : (
-            <Text style={styles.saveText}>Save & compute goals</Text>
+            <Text style={styles.saveText}>{t("editData.save")}</Text>
           )}
         </Pressable>
 
         {updateProfile.isError ? (
-          <Text style={styles.errorText}>
-            Could not save. Check your connection/credentials and try again.
-          </Text>
+          <Text style={styles.errorText}>{t("editData.saveError")}</Text>
         ) : null}
       </ScrollView>
 
       <Modal visible={info != null} transparent animationType="fade" onRequestClose={() => setInfo(null)}>
         <Pressable style={styles.infoBackdrop} onPress={() => setInfo(null)}>
           <Pressable style={styles.infoCard} onPress={() => {}}>
-            <Text style={styles.infoTitle}>{info ? FIELD_INFO[info].title : ""}</Text>
-            <Text style={styles.infoText}>{info ? FIELD_INFO[info].text : ""}</Text>
+            <Text style={styles.infoTitle}>
+              {info === "goal" ? t("profile.goalLabel") : info === "activity" ? t("profile.activityLabel") : ""}
+            </Text>
+            <Text style={styles.infoText}>
+              {info === "goal" ? t("editData.goalInfo") : info === "activity" ? t("editData.activityInfo") : ""}
+            </Text>
             <Pressable style={styles.infoBtn} onPress={() => setInfo(null)}>
-              <Text style={styles.infoBtnText}>Got it</Text>
+              <Text style={styles.infoBtnText}>{t("common.gotIt")}</Text>
             </Pressable>
           </Pressable>
         </Pressable>

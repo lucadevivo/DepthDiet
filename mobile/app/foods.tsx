@@ -6,6 +6,7 @@ import {
   TextInput,
   Pressable,
   ActivityIndicator,
+  Alert,
   StyleSheet,
 } from "react-native";
 import { useRouter } from "expo-router";
@@ -15,23 +16,34 @@ import { SegmentedControl } from "../src/components/SegmentedControl";
 import { Icon, type IconName } from "../src/components/Icon";
 import { useThemed } from "../src/theme/ThemeProvider";
 import type { ThemeColors } from "../src/theme/colors";
+import { useI18n } from "../src/i18n";
 import { parseDecimal } from "../src/lib/num";
 import { useCreateFood, useDeleteFood, useFoodsQuery, useUpdateFood } from "../src/hooks/useFoods";
 import type { CustomFood, CustomFoodInput } from "../src/types/food";
 
 type Basis = "per100" | "portion";
-const BASIS_OPTIONS: { value: Basis; label: string }[] = [
-  { value: "per100", label: "Per 100 g" },
-  { value: "portion", label: "Per portion" },
-];
 
 export default function FoodsScreen() {
   const { colors, styles } = useThemed(makeStyles);
+  const { t } = useI18n();
   const router = useRouter();
   const foods = useFoodsQuery();
   const createFood = useCreateFood();
   const updateFood = useUpdateFood();
   const deleteFood = useDeleteFood();
+
+  const BASIS_OPTIONS: { value: Basis; label: string }[] = [
+    { value: "per100", label: t("foods.per100") },
+    { value: "portion", label: t("foods.perPortion") },
+  ];
+
+  // Conferma prima di eliminare un cibo (azione irreversibile).
+  const confirmDelete = (food: CustomFood) => {
+    Alert.alert(t("foods.deleteTitle"), t("foods.deleteMsg", { name: food.name }), [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("common.delete"), style: "destructive", onPress: () => deleteFood.mutate(food.id) },
+    ]);
+  };
 
   const [showManual, setShowManual] = useState(false);
   // Alimento in modifica (null = creazione di uno nuovo).
@@ -123,64 +135,61 @@ export default function FoodsScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader title="Foods" />
+      <ScreenHeader title={t("foods.title")} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.lead}>
-          Your personal food library. Add the foods you eat so you can log them in seconds and the
-          meal scanner can match them automatically. Tap a food below to edit it.
-        </Text>
+        <Text style={styles.lead}>{t("foods.lead")}</Text>
 
-        <Text style={styles.section}>Add a food</Text>
+        <Text style={styles.section}>{t("foods.addFood")}</Text>
 
         {/* 3 modi per aggiungere un alimento, ognuno spiegato. */}
         <OptionRow
           icon="search"
-          title="Search the food database"
-          subtitle="Open Food Facts: a free, community-run database of packaged foods from around the world. Find a product and import its nutrition."
+          title={t("foods.optSearchTitle")}
+          subtitle={t("foods.optSearchSub")}
           onPress={() => router.push("/off-search")}
         />
         <OptionRow
           icon="barcode"
-          title="Scan a barcode"
-          subtitle="Point the camera at a product's barcode to look it up and import it."
+          title={t("foods.optBarcodeTitle")}
+          subtitle={t("foods.optBarcodeSub")}
           onPress={() => router.push("/scan")}
         />
         <OptionRow
           icon="add"
-          title="Enter manually"
-          subtitle="Type the name and the macros — per 100 g or for a portion you choose."
+          title={t("foods.optManualTitle")}
+          subtitle={t("foods.optManualSub")}
           onPress={() => (showManual ? resetForm() : setShowManual(true))}
           open={showManual}
         />
 
         {showManual ? (
           <View style={styles.formCard}>
-            <Text style={styles.formTitle}>{editing ? "Edit food" : "New food"}</Text>
+            <Text style={styles.formTitle}>{editing ? t("foods.editFood") : t("foods.newFood")}</Text>
             <TextInput
               style={styles.input}
-              placeholder="Name (e.g. Oats)"
+              placeholder={t("foods.namePlaceholder")}
               placeholderTextColor={colors.textMuted}
               value={name}
               onChangeText={setName}
             />
             <TextInput
               style={styles.input}
-              placeholder="Brand (optional)"
+              placeholder={t("foods.brandPlaceholder")}
               placeholderTextColor={colors.textMuted}
               value={brand}
               onChangeText={setBrand}
             />
 
             {/* Base dei valori: standard (100 g) o una porzione decisa dall'utente. */}
-            <Text style={styles.fieldLabel}>Values are for</Text>
+            <Text style={styles.fieldLabel}>{t("foods.valuesAreFor")}</Text>
             <SegmentedControl options={BASIS_OPTIONS} value={basis} onChange={setBasis} />
             {basis === "portion" ? (
               <NumberField
-                label="Portion size"
+                label={t("foods.portionSize")}
                 value={portionG}
                 onChangeText={setPortionG}
                 unit="g"
-                placeholder="e.g. 55"
+                placeholder={t("common.eg", { v: 55 })}
               />
             ) : null}
 
@@ -188,27 +197,23 @@ export default function FoodsScreen() {
               <NumberField
                 label="Kcal"
                 value={kcalShown}
-                onChangeText={(t) => {
-                  setKcal(t);
+                onChangeText={(tx) => {
+                  setKcal(tx);
                   // Campo svuotato → torna alle calorie calcolate dai macro.
-                  setKcalEdited(t.trim() !== "");
+                  setKcalEdited(tx.trim() !== "");
                 }}
               />
-              <NumberField label="Protein" value={p} onChangeText={setP} unit="g" />
+              <NumberField label={t("common.protein")} value={p} onChangeText={setP} unit="g" />
             </View>
             <View style={styles.row}>
-              <NumberField label="Carbs" value={c} onChangeText={setC} unit="g" />
-              <NumberField label="Fat" value={f} onChangeText={setF} unit="g" />
+              <NumberField label={t("common.carbs")} value={c} onChangeText={setC} unit="g" />
+              <NumberField label={t("common.fat")} value={f} onChangeText={setF} unit="g" />
             </View>
             <Text style={styles.basisHint}>
-              {kcalEdited
-                ? "Calories set manually. Clear the field to compute them from the macros."
-                : "Calories are computed from the macros (4/4/9). You can override them."}
+              {kcalEdited ? t("foods.kcalManual") : t("foods.kcalAuto")}
             </Text>
             <Text style={styles.basisHint}>
-              {basis === "portion"
-                ? "Enter the macros for one portion of the size above; it's saved as the default portion."
-                : "Enter the macros per 100 g."}
+              {basis === "portion" ? t("foods.macrosPortionHint") : t("foods.macrosPer100Hint")}
             </Text>
             <Pressable
               onPress={onSubmit}
@@ -218,20 +223,20 @@ export default function FoodsScreen() {
               {pending ? (
                 <ActivityIndicator color={colors.onPrimary} />
               ) : (
-                <Text style={styles.btnText}>{editing ? "Save changes" : "Save food"}</Text>
+                <Text style={styles.btnText}>{editing ? t("common.saveChanges") : t("foods.saveFood")}</Text>
               )}
             </Pressable>
-            {isError ? <Text style={styles.error}>Could not save.</Text> : null}
+            {isError ? <Text style={styles.error}>{t("foods.couldNotSave")}</Text> : null}
           </View>
         ) : null}
 
-        <Text style={styles.section}>Your foods</Text>
+        <Text style={styles.section}>{t("foods.yourFoods")}</Text>
         {foods.isLoading ? (
           <ActivityIndicator color={colors.primary} />
         ) : foods.isError ? (
-          <Text style={styles.error}>Could not load. Check backend/credentials.</Text>
+          <Text style={styles.error}>{t("foods.loadError")}</Text>
         ) : (foods.data ?? []).length === 0 ? (
-          <Text style={styles.empty}>No foods yet. Add your first one above.</Text>
+          <Text style={styles.empty}>{t("foods.none")}</Text>
         ) : (
           (foods.data ?? []).map((food) => {
             const active = editing?.id === food.id;
@@ -248,7 +253,7 @@ export default function FoodsScreen() {
                     {food.fat_per_100} /100g
                   </Text>
                 </Pressable>
-                <Pressable onPress={() => deleteFood.mutate(food.id)} hitSlop={10} style={styles.delBtn}>
+                <Pressable onPress={() => confirmDelete(food)} hitSlop={10} style={styles.delBtn}>
                   <Icon name="close" size={18} color={colors.textMuted} />
                 </Pressable>
               </View>

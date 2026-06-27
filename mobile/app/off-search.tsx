@@ -15,11 +15,13 @@ import { OffProductRow } from "../src/components/OffProductRow";
 import { Icon } from "../src/components/Icon";
 import { useTheme, useThemed } from "../src/theme/ThemeProvider";
 import type { ThemeColors } from "../src/theme/colors";
+import { useI18n } from "../src/i18n";
 import { searchOff } from "../src/api/off";
 import { useImportOff } from "../src/hooks/useImportOff";
 
 export default function OffSearchScreen() {
   const { colors, styles } = useThemed(makeStyles);
+  const { t } = useI18n();
   const [term, setTerm] = useState("");
   const [submitted, setSubmitted] = useState("");
   const { importProduct, statusOf } = useImportOff();
@@ -32,16 +34,13 @@ export default function OffSearchScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader title="Open Food Facts" />
-      <Text style={styles.help}>
-        Open Food Facts is a free, community database of packaged foods. Search a product to import
-        its nutrition into your foods.
-      </Text>
+      <ScreenHeader title={t("off.title")} />
+      <Text style={styles.help}>{t("off.help")}</Text>
 
       <View style={styles.searchBar}>
         <TextInput
           style={styles.input}
-          placeholder="Search a product (e.g. black beans)"
+          placeholder={t("off.searchPlaceholder")}
           placeholderTextColor={colors.textMuted}
           value={term}
           onChangeText={setTerm}
@@ -49,23 +48,21 @@ export default function OffSearchScreen() {
           returnKeyType="search"
         />
         <Pressable onPress={() => setSubmitted(term.trim())} style={styles.searchBtn}>
-          <Text style={styles.searchBtnText}>Search</Text>
+          <Text style={styles.searchBtnText}>{t("off.search")}</Text>
         </Pressable>
       </View>
 
       <Link href="/scan" asChild>
         <Pressable style={styles.scanLink}>
           <Icon name="barcode" size={18} color={colors.water} />
-          <Text style={styles.scanLinkText}>or scan a barcode</Text>
+          <Text style={styles.scanLinkText}>{t("off.orScan")}</Text>
         </Pressable>
       </Link>
 
       {results.isFetching ? (
         <ActivityIndicator color={colors.primary} style={{ marginTop: 24 }} />
       ) : results.isError ? (
-        <Text style={styles.error}>
-          Open Food Facts search failed. Try again shortly.
-        </Text>
+        <Text style={styles.error}>{t("off.searchFailed")}</Text>
       ) : (
         <FlatList showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.list}
@@ -81,9 +78,9 @@ export default function OffSearchScreen() {
           )}
           ListEmptyComponent={
             submitted.length >= 2 ? (
-              <Text style={styles.empty}>No results.</Text>
+              <Text style={styles.empty}>{t("off.noResults")}</Text>
             ) : (
-              <Text style={styles.empty}>Type at least 2 characters and press Search.</Text>
+              <Text style={styles.empty}>{t("off.typeTwo")}</Text>
             )
           }
         />

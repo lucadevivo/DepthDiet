@@ -59,4 +59,6 @@ export interface AnalyzeBody {
   depth?: { volumeMl?: number; quality?: DepthQuality };
   /** Oggetto di riferimento di scala presente in foto (Fase 4b). */
   reference?: { type: ReferenceType };
+  /** Lingua della risposta dell'IA (codice ISO, es. "it"). */
+  lang?: string;
 }

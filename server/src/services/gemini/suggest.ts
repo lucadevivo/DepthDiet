@@ -1,6 +1,7 @@
 import { Type, type Schema } from "@google/genai";
 import { env } from "../../config/env.js";
 import { getClient, withRetry } from "./client.js";
+import { languageName, parseLang } from "./lang.js";
 import type { CustomFood } from "../../repositories/customFoods.js";
 import type { RecipeSummary } from "../../repositories/recipes.js";
 import type { Macros } from "../nutrition.js";
@@ -33,6 +34,8 @@ export interface SuggestInput {
   onlyLibrary: boolean;
   /** Richiesta libera dell'utente (un cibo/bevanda voluti, dove si trova, una voglia...). */
   note?: string;
+  /** Lingua della risposta (codice ISO, es. "it"). Default "en". */
+  lang?: string;
   foods: CustomFood[];
   recipes: RecipeSummary[];
 }
@@ -80,6 +83,7 @@ const num = (v: unknown, fallback = 0): number =>
 
 function buildSuggestPrompt(input: SuggestInput): string {
   const { remaining, onlyLibrary, note, foods, recipes } = input;
+  const respondIn = languageName(parseLang(input.lang));
   const lines: string[] = [];
 
   lines.push(
@@ -90,21 +94,27 @@ function buildSuggestPrompt(input: SuggestInput): string {
     `- Carbs: ${round(remaining.carbs_g)} g`,
     `- Fat: ${round(remaining.fat_g)} g`,
     "",
-    "Suggest 2 to 3 concrete things to eat (real foods, snacks or simple meals) that help",
-    "cover the remaining macros without going far over the calories. For each one give a",
-    "realistic portion and its macros for that portion.",
+    "Suggest 2 to 3 things to eat that together help cover the remaining macros without",
+    "going far over the calories. For each one give a realistic portion and its macros.",
     "",
-    "IMPORTANT — make the suggestions SENSIBLE and appetizing, like a human nutritionist:",
-    "- Suggest things a person would actually eat as a food, snack or meal.",
-    "- Use realistic portion sizes.",
-    "- NEVER suggest a condiment, sauce, oil, syrup or sugar on its own (e.g. barbecue",
-    "  sauce, ketchup, mayo): these are only accompaniments to a real food, never a",
-    "  standalone suggestion or eaten in large amounts.",
-    "- Prefer balanced, whole foods (e.g. Greek yogurt, chicken, oats, fruit, eggs, rice).",
-    "- It is fine to suggest fewer items if that is more sensible.",
+    "IMPORTANT — suggest PROPER DISHES/MEALS, like a human nutritionist would, NOT bare",
+    "single ingredients:",
+    "- Each suggestion should be a real dish or composed snack a person would actually",
+    "  sit down and eat — e.g. 'Tuna & sweetcorn salad with olive oil', 'Chicken with",
+    "  rice and steamed broccoli', 'Greek yogurt with banana and honey', not just",
+    "  '180 g of sweetcorn' or 'plain pasta' on their own.",
+    "- Combine 2-4 ingredients into one coherent dish; name it naturally and put the key",
+    "  components and their amounts in 'portion' (e.g. '120 g tuna + 80 g sweetcorn + 1 tsp oil').",
+    "- The dish's macros must add up to roughly the portion you describe.",
+    "- A single ingredient is only OK when it genuinely stands alone as a snack",
+    "  (e.g. an apple, a protein shake, a handful of almonds).",
+    "- NEVER suggest a condiment, sauce, oil, syrup or sugar on its own, and never in",
+    "  absurd amounts: they only season a real dish.",
+    "- Prefer balanced, appetizing combinations over bland single foods.",
     "",
-    "Set from_library=true only if the suggestion comes from the user's saved library below.",
-    "Respond in English. Keep 'reason' short (one sentence).",
+    "Set from_library=true only if the suggestion is built from the user's saved library",
+    "below. Keep 'reason' short (one sentence).",
+    `Respond in ${respondIn} (dish names, portions and notes all in ${respondIn}).`,
   );
 
   if (note && note.trim() !== "") {
@@ -136,8 +146,9 @@ function buildSuggestPrompt(input: SuggestInput): string {
   if (onlyLibrary) {
     lines.push(
       "",
-      "Suggest ONLY items from the user's saved Foods and Recipes above (adjust the portion",
-      "as needed). Do not invent foods that are not in the lists. Every suggestion must have",
+      "Build the suggestions ONLY from the user's saved Foods and Recipes above (adjust the",
+      "portions as needed). You MAY combine several saved foods into one coherent dish, but",
+      "do not introduce ingredients that are not in the lists. Every suggestion must have",
       "from_library=true.",
       "BUT keep the suggestions sensible: only propose saved items that work as a real food,",
       "snack or meal in a realistic portion. If the saved items are just condiments/sauces or",
