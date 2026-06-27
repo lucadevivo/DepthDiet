@@ -45,7 +45,25 @@ jobs:
         run: npm install --legacy-peer-deps
 
       - name: Expo prebuild (genera progetto iOS + pods)
-        run: npx expo prebuild --platform ios
+        # `pod install` copia gli xcframework precompilati via rsync: sui runner
+        # macOS capita un "Input/output error" transitorio che fa fallire il pod
+        # install (e quindi non genera lo .xcworkspace). Ritentiamo con --clean,
+        # che rigenera la cartella ios da zero ad ogni tentativo.
+        run: |
+          set -uo pipefail
+          for attempt in 1 2 3; do
+            echo "::group::expo prebuild (tentativo $attempt)"
+            if npx expo prebuild --platform ios --clean; then
+              echo "::endgroup::"
+              echo "prebuild ok al tentativo $attempt"
+              exit 0
+            fi
+            echo "::endgroup::"
+            echo "prebuild/pod install fallito (tentativo $attempt), ritento tra 10s…"
+            sleep 10
+          done
+          echo "::error::expo prebuild fallito dopo 3 tentativi"
+          exit 1
         env:
           CI: "1"
 
