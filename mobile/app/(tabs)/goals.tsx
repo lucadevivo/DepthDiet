@@ -177,6 +177,32 @@ export default function GoalsScreen() {
 type CustomMode = "pct" | "gkg";
 
 /**
+ * Arrotonda 3 percentuali (la cui somma è ~100) a INTERI che sommano ESATTAMENTE
+ * a 100, col metodo del resto maggiore. Serve perché le percentuali salvate da una
+ * ripartizione in g/kg sono decimali precisi (es. 51.7/30.6/17.7): troncandole con
+ * parseInt la somma usciva 98% e mostrava il falso avviso "must be 100%".
+ */
+function roundPctTo100(p: MacroPercentages): MacroPercentages {
+  const parts = [
+    { k: "carbs_pct" as const, base: Math.floor(p.carbs_pct), rem: p.carbs_pct - Math.floor(p.carbs_pct) },
+    { k: "protein_pct" as const, base: Math.floor(p.protein_pct), rem: p.protein_pct - Math.floor(p.protein_pct) },
+    { k: "fat_pct" as const, base: Math.floor(p.fat_pct), rem: p.fat_pct - Math.floor(p.fat_pct) },
+  ];
+  let left = 100 - parts.reduce((s, x) => s + x.base, 0);
+  // Distribuisci le unità mancanti ai resti più grandi (i `parts` vengono mutati).
+  for (const x of [...parts].sort((a, b) => b.rem - a.rem)) {
+    if (left <= 0) break;
+    x.base += 1;
+    left -= 1;
+  }
+  return {
+    carbs_pct: parts[0]!.base,
+    protein_pct: parts[1]!.base,
+    fat_pct: parts[2]!.base,
+  };
+}
+
+/**
  * Editor della ripartizione custom dei macro, in due modi:
  *  - Percent: 3 percentuali (C/P/F) che sommano a 100;
  *  - g per kg: proteine e grassi in grammi per kg di peso (esatti), i carboidrati
@@ -205,10 +231,11 @@ function CustomEditor({
     { value: "gkg", label: t("goals.gPerKg") },
   ];
 
-  // --- Percent ---
-  const [carbs, setCarbs] = useState(String(initial.carbs_pct));
-  const [protein, setProtein] = useState(String(initial.protein_pct));
-  const [fat, setFat] = useState(String(initial.fat_pct));
+  // --- Percent --- (seed arrotondato a interi che fanno 100, vedi roundPctTo100)
+  const seed = roundPctTo100(initial);
+  const [carbs, setCarbs] = useState(String(seed.carbs_pct));
+  const [protein, setProtein] = useState(String(seed.protein_pct));
+  const [fat, setFat] = useState(String(seed.fat_pct));
   const c = Number.parseInt(carbs, 10);
   const pr = Number.parseInt(protein, 10);
   const f = Number.parseInt(fat, 10);

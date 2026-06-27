@@ -39,6 +39,8 @@ const MAP = {
   bulb: "bulb-outline",
   ruler: "resize-outline",
   info: "information-circle-outline",
+  language: "language-outline",
+  palette: "color-palette-outline",
 
   // Metriche
   calories: "flame",

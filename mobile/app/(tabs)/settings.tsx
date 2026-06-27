@@ -89,11 +89,9 @@ export default function SettingsScreen() {
       <Text style={styles.group}>{t("settings.languageGroup")}</Text>
       <View style={styles.card}>
         <Pressable style={styles.row} onPress={() => setLangOpen(true)}>
-          <Icon name="bulb" size={20} color={colors.primary} />
+          <Icon name="language" size={20} color={colors.primary} />
           <Text style={styles.rowLabel}>{t("settings.languageRow")}</Text>
-          <Text style={styles.langValue}>
-            {currentLang ? `${currentLang.flag} ${currentLang.name}` : lang}
-          </Text>
+          <Text style={styles.langValue}>{currentLang ? currentLang.name : lang}</Text>
           <Icon name="chevron" size={16} color={colors.textMuted} />
         </Pressable>
         <Text style={styles.muted}>{t("settings.languageHint")}</Text>
@@ -146,7 +144,7 @@ export default function SettingsScreen() {
       <Text style={styles.group}>{t("settings.appearance")}</Text>
       <View style={styles.card}>
         <Pressable style={styles.row} onPress={() => router.push("/appearance")}>
-          <Icon name="bulb" size={20} color={colors.primary} />
+          <Icon name="palette" size={20} color={colors.primary} />
           <Text style={styles.rowLabel}>{t("settings.themeColors")}</Text>
           <Icon name="chevron" size={16} color={colors.textMuted} />
         </Pressable>
@@ -178,7 +176,6 @@ export default function SettingsScreen() {
                     setLangOpen(false);
                   }}
                 >
-                  <Text style={styles.langFlag}>{l.flag}</Text>
                   <Text style={[styles.langName, active && styles.langNameActive]}>{l.name}</Text>
                   {active ? <Icon name="check" size={18} color={colors.primary} /> : null}
                 </Pressable>
