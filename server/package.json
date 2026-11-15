@@ -12,7 +12,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "db:migrate": "tsx src/scripts/migrate.ts",
     "db:backup": "tsx src/scripts/backup.ts",
-    "gemini:test": "tsx src/scripts/test-analyze.ts"
+    "gemini:test": "tsx src/scripts/test-analyze.ts",
+    "test": "tsx --test src/**/*.test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.9.0",

@@ -18,6 +18,21 @@ function optional(name: string, fallback: string): string {
   return v === undefined || v === "" ? fallback : v;
 }
 
+/** "nome:token,nome2:token2" -> utenti extra. Nome = file del DB, quindi niente caratteri strani. */
+export function parseUsers(raw: string): { name: string; token: string }[] {
+  return raw
+    .split(",")
+    .map((pair) => pair.trim())
+    .filter((pair) => pair !== "")
+    .map((pair) => {
+      const [name = "", token = ""] = pair.split(":");
+      if (!/^[a-z0-9_-]+$/i.test(name) || token.length < 24) {
+        throw new Error(`APP_EXTRA_USERS: voce non valida "${name}" (nome a-z0-9_-, token >= 24 caratteri)`);
+      }
+      return { name, token };
+    });
+}
+
 export const env = {
   /** Porta su cui ascolta il backend (dietro il Cloudflare Tunnel). */
   port: Number.parseInt(optional("PORT", "8787"), 10),
@@ -37,6 +52,12 @@ export const env = {
    * che esporre i dati per errore di configurazione.
    */
   appBearerToken: optional("APP_BEARER_TOKEN", ""),
+
+  /**
+   * Altri utenti, ognuno con il suo token e il suo DB separato in data/users/<nome>.sqlite.
+   * Il token principale (sopra) resta sul DB storico: per lui non cambia niente.
+   */
+  extraUsers: parseUsers(optional("APP_EXTRA_USERS", "")),
 
   /**
    * Livello 1 (bordo): verifica opzionale del JWT iniettato da Cloudflare Access.

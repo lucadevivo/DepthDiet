@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import type { NextFunction, Request, Response } from "express";
 import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from "jose";
 import { env } from "../config/env.js";
+import { currentUser } from "../db/connection.js";
 
 /**
  * Autenticazione a due livelli (Fase 1c).
@@ -14,8 +15,9 @@ import { env } from "../config/env.js";
  *    e non ha raggiunto l'origin scavalcandolo (es. IP dell'origin trapelato).
  *
  *  Livello 2 — Bearer token applicativo:
- *    ogni rotta protetta richiede `Authorization: Bearer <APP_BEARER_TOKEN>`.
- *    Confronto timing-safe; assente o errato → 401.
+ *    ogni rotta protetta richiede `Authorization: Bearer <token>`, dove il token è
+ *    APP_BEARER_TOKEN (utente principale) o uno di APP_EXTRA_USERS. Il token sceglie
+ *    anche il DB dell'utente. Confronto timing-safe; assente o errato → 401.
  */
 
 // JWKS di Cloudflare Access, creato pigramente e cache-ato da jose.
@@ -55,16 +57,18 @@ async function checkCloudflareAccess(req: Request): Promise<boolean> {
   }
 }
 
-function checkBearer(req: Request): boolean {
+/** Utente del token ("" = principale), o null se il token non è valido. */
+export function userForBearer(header: string): string | null {
   // Fail-closed: senza token configurato, nessuna rotta protetta è accessibile.
-  if (env.appBearerToken === "") {
+  if (env.appBearerToken === "" && env.extraUsers.length === 0) {
     console.warn("[auth] APP_BEARER_TOKEN non configurato: rotte protette chiuse.");
-    return false;
+    return null;
   }
-  const header = req.header("Authorization") ?? "";
   const prefix = "Bearer ";
-  if (!header.startsWith(prefix)) return false;
-  return safeEqual(header.slice(prefix.length), env.appBearerToken);
+  if (!header.startsWith(prefix)) return null;
+  const token = header.slice(prefix.length);
+  if (env.appBearerToken !== "" && safeEqual(token, env.appBearerToken)) return "";
+  return env.extraUsers.find((u) => safeEqual(token, u.token))?.name ?? null;
 }
 
 /** Middleware Express: applica entrambi i livelli; qualunque fallimento → 401. */
@@ -74,10 +78,11 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
       res.status(401).json({ error: "unauthorized", reason: "cloudflare_access" });
       return;
     }
-    if (!checkBearer(req)) {
+    const user = userForBearer(req.header("Authorization") ?? "");
+    if (user === null) {
       res.status(401).json({ error: "unauthorized", reason: "bearer" });
       return;
     }
-    next();
+    currentUser.run(user, () => next());
   })().catch(next);
 }
